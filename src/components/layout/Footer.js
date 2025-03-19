@@ -52,13 +52,13 @@ const Footer = () => {
         <Grid container spacing={2}>
           <Grid item xs={12} md={6}>
             <Copyright variant="body2">
-              © {new Date().getFullYear()},{' '}
+              © {new Date().getFullYear()}{' '}
               <Link
                 href="#"
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                AJCE
+                
               </Link>
             </Copyright>
           </Grid>

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useTheme, useMediaQuery } from '@mui/material';
-import logo from "../../assets/images/diocese-logo-new5.webp";
+import logo from "../../assets/images/diocese-logo-new57.png.png";
 import {
   Drawer,
   IconButton,
@@ -83,6 +83,7 @@ const IconWrapper = styled(Box)({
   height: '24px',
   marginRight: '12px',
   fontSize: '18px',
+  color: 'rgb(107, 114, 128)', // Neutral icon color
 });
 
 const menuItems = [
@@ -90,7 +91,7 @@ const menuItems = [
     type: 'single',
     path: '/',
     label: 'Dashboard',
-    icon: '📊',
+    icon: '📈',
   },
   {
     type: 'header',
@@ -100,7 +101,7 @@ const menuItems = [
     type: 'single',
     path: '/forane',
     label: 'Manage Forane',
-    icon: '🏛️',
+    icon: '🏢',
   },
   {
     type: 'single',
@@ -110,89 +111,80 @@ const menuItems = [
   },
   {
     type: 'single',
-    path: '/koottayma',
-    label: 'Manage Koottayma',
-    icon: '👥',
+    path: '/PersonManagement',
+    label: 'Manage Category',
+    icon: '🏷️',
   },
   {
     type: 'single',
     path: '/Family',
-    label: 'Manage Family',
-    icon: '👨‍👩‍👦',
-  },
+    label: 'Manage Event',
+    icon: '🎉',
+  }, 
   {
     type: 'single',
-    path: '/PersonManagement',
-    label: 'Manage Person',
-    icon: '👤',
-  },
+    path: '/FinanceSettings',
+    label: 'Manage Venue',
+    icon: '🏟️',
+  }, 
+
   {
     type: 'header',
-    label: 'ACCOUNTS',
+    label: 'REGISTRATION',
   },
   {
     type: 'single',
     path: '/FamilyFinance',
-    label: 'Family Finance',
-    icon: '💰',
+    label: 'Manage Managers',
+    icon: '👥',
   },
   {
     type: 'single',
     path: '/transactions',
-    label: 'Transaction',
-    icon: '💳',
-  },
-  {
-    type: 'header',
-    label: 'FINANCE SETTINGS',
-  },
-  {
-    type: 'single',
-    path: '/project',
-    label: 'Manage Other Project',
-    icon: '📋',
-  },
-  {
-    type: 'single',
-    path: '/community',
-    label: 'Manage Communities',
-    icon:  '🤝' ,
-  },
-  {
-    type: 'single',
-    path: '/FinanceSettings',
-    label: 'Finance Settings',
-    icon: '⚙️',
-  },
-  {
-    type: 'header',
-    label: 'REPORTS',
+    label: 'Registration',
+    icon: '📝',
   },
   {
     type: 'single',
     path: '/report',
-    label: 'Report',
-    icon: '📋',
+    label: 'Registration Print',
+    icon: '🖨️',
+  },
+  {
+    type: 'header',
+    label: 'JUDGE',
+  },
+  {
+    type: 'single',
+    path: '/project',
+    label: 'Score Entry',
+    icon: '🏆',
+  },
+  {
+    type: 'single',
+    path: '/community',
+    label: 'Stage Allocation',
+    icon: '🎭',
+  },
+  
+  {
+    type: 'single',
+    path: '/yearendtransfer',
+    label: 'Judge Total Sheet',
+    icon: '📊',
   },
   {
     type: 'single',
     path: '/family-print',
-    label: 'Tithe Print',
-    icon: '📋',
+    label: 'Judge Sheet',
+    icon: '📑',
   },
   {
     type: 'single',
     path: '/addopening',
-    label: 'Opening Balance',
-    icon: '📋',
+    label: 'Venue Based  List',
+    icon: '📍',
   },
-  {
-    type: 'single',
-    path: '/yearendtransfer',
-    label: 'Year End Transfer',
-    icon: '📋',
-  },
-
 ];
 
 const Sidenav = ({ color }) => {

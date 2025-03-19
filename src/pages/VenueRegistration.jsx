@@ -88,7 +88,7 @@ const VenueRegistration = () => {
   const fetchParishes = async () => {
     try {
       setIsLoading(true);
-      const response = await axiosInstance.get("/Forane");
+      const response = await axiosInstance.get("/forane");
       setParishes(response.data || []);
       setIsLoading(false);
     } catch (err) {

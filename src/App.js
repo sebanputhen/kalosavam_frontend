@@ -43,9 +43,9 @@ import MoveFamily from "./pages/movefamily";
 import Community from "./pages/StageAllocation";
 import Project from "./pages/EventScoringPage";
 import ChurchReportPage from './pages/EventRegistrationPrintPage';
-import BulkFamilyPrintPage from './pages/BulkFamilyPrintPage';
-import OpeningBalance from './pages/OpeningBalance';
-import YearEndTransfer from './pages/YearEndTransfer';
+import BulkFamilyPrintPage from './pages/JudgeMarkEntrySheet';
+import OpeningBalance from './pages/ForaneEventRegistration';
+import YearEndTransfer from './pages/JudgeMarkEntrySheetTotal';
 import logout from './pages/logout';
 
 // Styles

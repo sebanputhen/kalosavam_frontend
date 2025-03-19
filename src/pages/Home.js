@@ -160,7 +160,7 @@ const Home = () => {
     <DashboardContainer>
       <Container maxWidth="xl">
         <Grid container spacing={3}>
-          <Grid item xs={12}>
+          {/* <Grid item xs={12}>
             <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <Typography variant="h4" sx={{ 
                 fontWeight: 700,
@@ -238,7 +238,7 @@ const Home = () => {
               </Typography>
               <LineChart selectedYear={selectedYear} />
             </ChartCard>
-          </Grid>
+          </Grid> */}
         </Grid>
       </Container>
     </DashboardContainer>

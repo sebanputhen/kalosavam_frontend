@@ -400,7 +400,7 @@ const EventRegistrationPrintPage = () => {
               </Box>
 
               <Box mt={2} display="flex" justifyContent="space-between">
-                <Typography variant="body2">തിയ്യതി:</Typography>
+                <Typography variant="body2">തിയ്തി:</Typography>
                 <Typography variant="body2"> സെക്രട്ടറി</Typography>
               </Box>
             </Paper>

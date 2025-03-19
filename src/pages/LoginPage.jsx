@@ -20,9 +20,9 @@ import {
   VisibilityOff,
   LockOutlined,
   Email,
-} from '@mui/icons-material';
+} from '@mui/icons-material'; 
 import axiosInstance from "../axiosConfig";
-import logo from "../assets/images/diocese-logo-new5.webp";
+import logo from "../assets/images/diocese-logo-new57.png.png";
 const theme = createTheme({
   palette: {
     mode: 'light',
