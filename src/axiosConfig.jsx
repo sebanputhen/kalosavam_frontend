@@ -3,7 +3,7 @@
 // const axiosInstance = axios.create({
 //   baseURL: "https://apijeevan.vercel.app",//"https://jeevan-backend.vercel.app/",//https://apijeevan.vercel.app/",//"https://jeevan-backend-n9hy.onrender.com", "https://apijeevan.vercel.app/"  //http://localhost:5000", // Your backend UR LbaseURL: "https://tithe-backend.onrender.com"
 //   withCredentials: true, // Include cookies in requests
-// });
+// });kalosavam-backend.vercel.app
  
 // export default axiosInstance;
 
@@ -12,7 +12,7 @@ import axios from 'axios';
 import { getAuthToken } from './utils/auth';
 
 const axiosInstance = axios.create({
-  baseURL: 'http://localhost:5000/',
+  baseURL: 'https://kalosavam-backend.vercel.app/',
   withCredentials: true,
   headers: {
     'Content-Type': 'application/json'
