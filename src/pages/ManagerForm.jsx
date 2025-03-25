@@ -1,6 +1,31 @@
 import React, { useState, useEffect } from 'react';
 import axiosInstance from "../axiosConfig";
-// import './ManagerForm.css';
+import { 
+  Container, 
+  Typography, 
+  Box, 
+  Select, 
+  MenuItem, 
+  TextField, 
+  Button, 
+  FormControl, 
+  InputLabel, 
+  Grid, 
+  Paper, 
+  Table, 
+  TableBody, 
+  TableCell, 
+  TableContainer, 
+  TableHead, 
+  TableRow,
+  CircularProgress,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions
+} from '@mui/material';
+// import { LoadingButton } from '@mui/lab';
 
 const ManagerForm = () => {
   const [formData, setFormData] = useState({
@@ -12,7 +37,6 @@ const ManagerForm = () => {
     ]
   });
   
-  // Use state for parishes data from DB
   const [parishes, setParishes] = useState([]);
   const [sections, setSections] = useState([]);
   const [message, setMessage] = useState('');
@@ -20,6 +44,8 @@ const ManagerForm = () => {
   const [savedManagers, setSavedManagers] = useState([]);
   const [isEditing, setIsEditing] = useState(false);
   const [editingId, setEditingId] = useState(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [recordToDelete, setRecordToDelete] = useState(null);
 
   // Load parishes when component mounts
   useEffect(() => {
@@ -145,6 +171,30 @@ const ManagerForm = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  const handleDeleteConfirmation = (id) => {
+    setRecordToDelete(id);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDelete = async () => {
+    try {
+      await axiosInstance.delete(`/managers/${recordToDelete}`);
+      setMessage('Manager record deleted successfully');
+      
+      // Refresh the manager list for current parish
+      if (formData.parish) {
+        fetchManagersByParish(formData.parish);
+      }
+      
+      setDeleteDialogOpen(false);
+      setRecordToDelete(null);
+    } catch (error) {
+      console.error('Error deleting manager:', error);
+      setMessage('Failed to delete manager record');
+      setDeleteDialogOpen(false);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     
@@ -200,23 +250,6 @@ const ManagerForm = () => {
     }
   };
 
-  const handleDelete = async (id) => {
-    if (window.confirm('Are you sure you want to delete this record?')) {
-      try {
-        await axiosInstance.delete(`/managers/${id}`);
-        setMessage('Manager record deleted successfully');
-        
-        // Refresh the manager list for current parish
-        if (formData.parish) {
-          fetchManagersByParish(formData.parish);
-        }
-      } catch (error) {
-        console.error('Error deleting manager:', error);
-        setMessage('Failed to delete manager record');
-      }
-    }
-  };
-
   const cancelEdit = () => {
     setIsEditing(false);
     setEditingId(null);
@@ -231,146 +264,215 @@ const ManagerForm = () => {
   };
 
   return (
-    <div className="manager-form-container">
-      <h1>{isEditing ? 'Edit Managers' : 'Manager Registration'}</h1>
-      
-      {message && <div className="message">{message}</div>}
-      
-      <form onSubmit={handleSubmit} className="manager-form">
-        <div className="form-group">
-          <label htmlFor="parish">Parish:</label>
-          <select 
-            id="parish" 
-            value={formData.parish} 
-            onChange={handleParishChange}
-            required
-            disabled={isEditing} // Disable parish change during edit
-          >
-            <option value="">Select Parish</option>
-            {parishes.map((parish) => (
-              <option key={parish._id} value={parish._id}>{parish.name}</option>
-            ))}
-          </select>
-        </div>
+    <Container maxWidth="md">
+      <Box sx={{ my: 4 }}>
+        <Typography variant="h4" component="h1" gutterBottom>
+          {isEditing ? 'Edit Managers' : 'Manager Registration'}
+        </Typography>
         
-        <div className="form-group">
-          <label htmlFor="section">Section:</label>
-          <select 
-            id="section" 
-            value={formData.section} 
-            onChange={handleSectionChange}
-            disabled={!formData.parish}
-            required
-          >
-            <option value="">Select Section</option>
-            {sections.map((section) => (
-              <option key={section} value={section}>{section}</option>
-            ))}
-          </select>
-        </div>
+        {message && (
+          <Box sx={{ 
+            bgcolor: 'info.light', 
+            color: 'info.contrastText', 
+            p: 2, 
+            borderRadius: 1,
+            mb: 2 
+          }}>
+            {message}
+          </Box>
+        )}
         
-        <h2>Managers Information</h2>
+        <Paper elevation={3} sx={{ p: 3 }}>
+          <form onSubmit={handleSubmit}>
+            <Grid container spacing={2}>
+              <Grid item xs={12} md={6}>
+                <FormControl fullWidth required>
+                  <InputLabel>Parish</InputLabel>
+                  <Select
+                    value={formData.parish}
+                    label="Parish"
+                    onChange={handleParishChange}
+                    disabled={isEditing}
+                  >
+                    <MenuItem value="">Select Parish</MenuItem>
+                    {parishes.map((parish) => (
+                      <MenuItem key={parish._id} value={parish._id}>
+                        {parish.name}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+              
+              <Grid item xs={12} md={6}>
+                <FormControl fullWidth required>
+                  <InputLabel>Section</InputLabel>
+                  <Select
+                    value={formData.section}
+                    label="Section"
+                    onChange={handleSectionChange}
+                    disabled={!formData.parish}
+                  >
+                    <MenuItem value="">Select Section</MenuItem>
+                    {sections.map((section) => (
+                      <MenuItem key={section} value={section}>
+                        {section}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+              
+              {formData.managers.map((manager, index) => (
+                <React.Fragment key={index}>
+                  <Grid item xs={12}>
+                    <Typography variant="h6" component="h2">
+                      Manager {index + 1}
+                    </Typography>
+                  </Grid>
+                  
+                  <Grid item xs={12} md={6}>
+                    <TextField
+                      fullWidth
+                      label="Name"
+                      value={manager.name}
+                      onChange={(e) => handleManagerChange(index, 'name', e.target.value)}
+                      required
+                    />
+                  </Grid>
+                  
+                  <Grid item xs={12} md={6}>
+                    <TextField
+                      fullWidth
+                      label="Contact Number"
+                      value={manager.contactNumber}
+                      onChange={(e) => handleManagerChange(index, 'contactNumber', e.target.value)}
+                      required
+                      type="tel"
+                      inputProps={{ pattern: "[0-9]*" }}
+                    />
+                  </Grid>
+                </React.Fragment>
+              ))}
+              
+              <Grid item xs={12}>
+                <Box sx={{ 
+                  display: 'flex', 
+                  justifyContent: 'space-between', 
+                  mt: 2 
+                }}>
+                  {isEditing && (
+                    <Button 
+                      variant="outlined" 
+                      color="secondary" 
+                      onClick={cancelEdit}
+                    >
+                      Cancel
+                    </Button>
+                  )}
+                 
+                  <Button
+                    type="submit"
+                    variant="contained"
+                    loading={isLoading}
+                    loadingIndicator="Saving..."
+                  >
+                    {isEditing ? 'Update Managers' : 'Save Managers'}
+                  </Button> 
+                </Box>
+              </Grid>
+            </Grid>
+          </form>
+        </Paper>
         
-        {formData.managers.map((manager, index) => (
-          <div key={index} className="manager-info">
-            <h3>Manager {index + 1}</h3>
+        {formData.parish && (
+          <Box sx={{ mt: 4 }}>
+            <Typography variant="h5" gutterBottom>
+              Managers for Selected Parish
+            </Typography>
             
-            <div className="form-group">
-              <label htmlFor={`manager-name-${index}`}>Name:</label>
-              <input
-                type="text"
-                id={`manager-name-${index}`}
-                value={manager.name}
-                onChange={(e) => handleManagerChange(index, 'name', e.target.value)}
-                required
-              />
-            </div>
-            
-            <div className="form-group">
-              <label htmlFor={`manager-contact-${index}`}>Contact Number:</label>
-              <input
-                type="text"
-                id={`manager-contact-${index}`}
-                value={manager.contactNumber}
-                onChange={(e) => handleManagerChange(index, 'contactNumber', e.target.value)}
-                required
-                pattern="[0-9]*"
-                title="Please enter only numbers"
-              />
-            </div>
-          </div>
-        ))}
-        
-        <div className="form-actions">
-          {isEditing && (
-            <button 
-              type="button" 
-              onClick={cancelEdit}
-              className="cancel-btn"
-            >
-              Cancel
-            </button>
-          )}
-          <button type="submit" disabled={isLoading}>
-            {isLoading ? 'Saving...' : isEditing ? 'Update Managers' : 'Save Managers'}
-          </button>
-        </div>
-      </form>
-      
-      {formData.parish && (
-        <div className="saved-managers">
-          <h2>Managers for Selected Parish</h2>
-          
-          {isLoading ? (
-            <p>Loading...</p>
-          ) : savedManagers.length > 0 ? (
-            <table>
-              <thead>
-                <tr>
-                  <th>Parish</th>
-                  <th>Section</th>
-                  <th>Manager 1</th>
-                  <th>Contact</th>
-                  <th>Manager 2</th>
-                  <th>Contact</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {savedManagers.map((record) => (
-                  <tr key={record._id}>
-                    <td>{typeof record.parish === 'object' ? record.parish.name : record.parish}</td>
-                    <td>{record.section}</td>
-                    <td>{record.managers[0]?.name || '-'}</td>
-                    <td>{record.managers[0]?.contactNumber || '-'}</td>
-                    <td>{record.managers[1]?.name || '-'}</td>
-                    <td>{record.managers[1]?.contactNumber || '-'}</td>
-                    <td>
-                      <div className="action-buttons">
-                        <button 
-                          className="edit-btn" 
-                          onClick={() => handleEdit(record)}
-                        >
-                          Edit
-                        </button>
-                        <button 
-                          className="delete-btn" 
-                          onClick={() => handleDelete(record._id)}
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          ) : (
-            <p>No managers saved for this parish</p>
-          )}
-        </div>
-      )}
-    </div>
+            {isLoading ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
+                <CircularProgress />
+              </Box>
+            ) : savedManagers.length > 0 ? (
+              <TableContainer component={Paper}>
+                <Table>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Parish</TableCell>
+                      <TableCell>Section</TableCell>
+                      <TableCell>Manager 1</TableCell>
+                      <TableCell>Contact</TableCell>
+                      <TableCell>Manager 2</TableCell>
+                      <TableCell>Contact</TableCell>
+                      <TableCell>Actions</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {savedManagers.map((record) => (
+                      <TableRow key={record._id}>
+                        <TableCell>
+                          {typeof record.parish === 'object' ? record.parish.name : record.parish}
+                        </TableCell>
+                        <TableCell>{record.section}</TableCell>
+                        <TableCell>{record.managers[0]?.name || '-'}</TableCell>
+                        <TableCell>{record.managers[0]?.contactNumber || '-'}</TableCell>
+                        <TableCell>{record.managers[1]?.name || '-'}</TableCell>
+                        <TableCell>{record.managers[1]?.contactNumber || '-'}</TableCell>
+                        <TableCell>
+                          <Box sx={{ display: 'flex', gap: 1 }}>
+                            <Button 
+                              variant="outlined" 
+                              color="primary" 
+                              size="small"
+                              onClick={() => handleEdit(record)}
+                            >
+                              Edit
+                            </Button>
+                            <Button 
+                              variant="outlined" 
+                              color="error" 
+                              size="small"
+                              onClick={() => handleDeleteConfirmation(record._id)}
+                            >
+                              Delete
+                            </Button>
+                          </Box>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            ) : (
+              <Typography variant="body1">No managers saved for this parish</Typography>
+            )}
+          </Box>
+        )}
+      </Box>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog
+        open={deleteDialogOpen}
+        onClose={() => setDeleteDialogOpen(false)}
+      >
+        <DialogTitle>Confirm Delete</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Are you sure you want to delete this manager record?
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteDialogOpen(false)} color="primary">
+            Cancel
+          </Button>
+          <Button onClick={handleDelete} color="error" autoFocus>
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </Container>
   );
 };
 
