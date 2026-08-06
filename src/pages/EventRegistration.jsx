@@ -578,6 +578,16 @@ const EventRegistration = () => {
                         <Typography variant="body2" color="textSecondary" gutterBottom>{config.label}</Typography>
                         <Box sx={{ mt: 1 }}>
                           <Typography variant="body2" gutterBottom><strong>Events:</strong> {secEvents.length}{crossEvents.length > 0 && ` + ${crossEvents.length} Cross`}</Typography>
+                          <Typography variant="body2" gutterBottom><strong>Total Participants:</strong> {
+                            Object.entries(eventParticipantCounts)
+                              .filter(([eid]) => secEvents.some(e => e._id === eid))
+                              .reduce((sum, [, c]) => sum + c, 0)
+                          }{(() => {
+                            const crossCount = Object.entries(eventParticipantCounts)
+                              .filter(([eid]) => eid.endsWith('_cross') && crossEvents.some(e => `${e._id}_cross` === eid))
+                              .reduce((sum, [, c]) => sum + c, 0);
+                            return crossCount > 0 ? ` + ${crossCount} Cross-Section` : '';
+                          })()}</Typography>
                           <Grid container spacing={1} sx={{ mt: 1 }}>
                             <Grid item xs={6}><Paper variant="outlined" sx={{ p: 1, textAlign: 'center', borderColor: theme.palette.primary.main, bgcolor: 'rgba(37,99,235,0.05)' }}>
                               <Typography variant="body2" fontWeight="600" color="primary">Individual</Typography><Typography variant="h6" color="primary">{singles.length}</Typography>

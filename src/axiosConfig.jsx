@@ -12,7 +12,7 @@ import axios from 'axios';
 import { getAuthToken } from './utils/auth';
 
 const axiosInstance = axios.create({
-  baseURL: 'http://localhost:5000/',//'https://kalosavam-backend.vercel.app/',//'http://localhost:5000/'
+  baseURL: 'https://kalosavam-backend.vercel.app/',//'http://localhost:5000/'
   withCredentials: true,
   headers: {
     'Content-Type': 'application/json'
