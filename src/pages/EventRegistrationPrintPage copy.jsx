@@ -20,7 +20,6 @@ import {
 } from '@mui/material';
 import { createTheme, ThemeProvider } from '@mui/material/styles';
 import axiosInstance from "../axiosConfig";
-import { getParishId } from '../utils/parishAuth';
 import { useFinancialYear } from './FinancialYearContext';
 
 // Theme configuration
@@ -42,45 +41,15 @@ const theme = createTheme({
   }
 });
 
+// Style for print media
 const printStyles = `
   @media print {
     @page {
       size: A4 landscape;
-      margin: 5mm;
+      margin: 10mm;
     }
-    .no-print {
-      display: none !important;
-    }
-    nav, header, footer, aside,
-    .MuiDrawer-root, .MuiAppBar-root,
-    .sidebar, .navbar, .topbar,
-    [class*="Sidebar"], [class*="Navbar"], [class*="AppBar"],
-    [class*="drawer"], [class*="header"] {
-      display: none !important;
-    }
-    .print-area {
-      position: fixed !important;
-      left: 0 !important;
-      top: 0 !important;
-      width: 100% !important;
-      margin: 0 !important;
-      padding: 5px !important;
-      box-shadow: none !important;
-      font-size: 10px !important;
-    }
-    .print-area * {
-      visibility: visible !important;
-    }
-    .print-area table {
-      font-size: 9px !important;
-    }
-    .print-area td, .print-area th {
-      padding: 2px !important;
-      white-space: nowrap !important;
-    }
-    .print-area h4 {
-      font-size: 18px !important;
-      margin: 0 !important;
+    body {
+      zoom: 0.85;
     }
     .vertical-text {
       writing-mode: vertical-rl;
@@ -118,16 +87,16 @@ const EventRegistrationPrintPage = () => {
   const [managers, setManagers] = useState([]);
   const [parishDetails, setParishDetails] = useState(null);
   const [eventColumns, setEventColumns] = useState([]);
-  const [allSectionEvents, setAllSectionEvents] = useState([]);
-
+const [allSectionEvents, setAllSectionEvents] = useState([]);
   useEffect(() => {
+    // Fetch parishes on component mount
     const fetchParishes = async () => {
       try {
         const response = await axiosInstance.get("/parish");
         const filtered = (response.data || []).filter(
-          (p) => p.forane === "673799a3cb9b4aa181e53fa2" || p.forane?._id === "673799a3cb9b4aa181e53fa2"
-        );
-        setParishes(filtered);
+        (p) => p.forane === "673799a3cb9b4aa181e53fa2" || p.forane?._id === "673799a3cb9b4aa181e53fa2"
+      );
+      setParishes(filtered);
       } catch (error) {
         console.error("Error fetching parishes:", error);
       }
@@ -136,10 +105,6 @@ const EventRegistrationPrintPage = () => {
     fetchParishes();
   }, []);
 useEffect(() => {
-  const pid = getParishId();
-  if (pid) setSelectedParish(pid);
-}, []);
-  useEffect(() => {
     const fetchSectionEvents = async () => {
       if (!selectedSection) {
         setAllSectionEvents([]);
@@ -161,7 +126,7 @@ useEffect(() => {
 
     fetchSectionEvents();
   }, [selectedSection]);
-
+  // Fetch parish details when a parish is selected
   useEffect(() => {
     const fetchParishDetails = async () => {
       if (!selectedParish) return;
@@ -185,6 +150,7 @@ useEffect(() => {
       try {
         setIsLoading(true);
     
+        // Fetch section details with new route pattern
         const encodedSection = selectedSection 
           ? encodeURIComponent(selectedSection)
           : 'all';
@@ -195,12 +161,14 @@ useEffect(() => {
         const sectionDetails = sectionResponse.data.data.sectionDetails;
         setSectionDetails(sectionDetails);
     
+        // Fetch all registrations
         const registrationsResponse = await axiosInstance.get(`/registrations/parish/${selectedParish}`);
         const registrations = registrationsResponse.data.data.registrations || [];
     
         const processedParticipants = processRegistrations(registrations);
         setParticipants(processedParticipants);
 
+        // Extract event columns dynamically
         const extractedEventColumns = extractEventColumns(registrations);
         setEventColumns(extractedEventColumns);
 
@@ -214,7 +182,9 @@ useEffect(() => {
     fetchData();
   }, [selectedParish, selectedSection]);
 
+  // Function to extract event columns dynamically
   const extractEventColumns = (registrations) => {
+    // Group registrations by event name
     const eventColumnMap = registrations.reduce((acc, reg) => {
       if (reg.event && reg.event.eventName) {
         acc[reg.event.eventName] = reg.event;
@@ -222,6 +192,7 @@ useEffect(() => {
       return acc;
     }, {});
 
+    // Convert to array of event column objects
     return Object.values(eventColumnMap).map(event => ({
       id: event._id,
       name: event.eventName
@@ -234,9 +205,13 @@ useEffect(() => {
     
       try {
         const response = await axiosInstance.get(`/managers/parish/${selectedParish}/section/${selectedSection}`);
+     
+        
+        // Directly access the first item in the response.data array
         const sectionData = response.data[0];
         
         if (sectionData && sectionData.managers && sectionData.managers.length > 0) {
+          // Set all managers
           setManagers(sectionData.managers);
         } else {
           setManagers([]);
@@ -281,38 +256,35 @@ useEffect(() => {
       .sort((a, b) => a.name.localeCompare(b.name));
   };
 
+  // Get the current section text
   const getCurrentSectionText = () => {
     if (!selectedSection) return 'സെന്റ് തോമസ്  വിഭാഗം';
+    
     return SECTION_CONFIG[selectedSection]?.section || 'സെന്റ് തോമസ്  വിഭാഗം';
   };
-
-  // Use allSectionEvents when section is selected, fallback to eventColumns
-  const displayEventColumns = allSectionEvents.length > 0 ? allSectionEvents : eventColumns;
 
   return (
     <ThemeProvider theme={theme}>
       <style>{printStyles}</style>
       <Container maxWidth="xl">
         <Box sx={{ py: 4 }}>
-          <Grid container spacing={2} sx={{ mb: 3 }} className="no-print">
-            {!getParishId() && (
-  <Grid item xs={12} md={4}>
-    <FormControl fullWidth>
-      <InputLabel>Select Parish</InputLabel>
-      <Select
-        value={selectedParish}
-        label="Select Parish"
-        onChange={(e) => setSelectedParish(e.target.value)}
-      >
-        {parishes.map((parish) => (
-          <MenuItem key={parish._id} value={parish._id}>
-            {parish.name}
-          </MenuItem>
-        ))}
-      </Select>
-    </FormControl>
-  </Grid>
-)}
+          <Grid container spacing={2} sx={{ mb: 3 }}>
+            <Grid item xs={12} md={4}>
+              <FormControl fullWidth>
+                <InputLabel>Select Parish</InputLabel>
+                <Select
+                  value={selectedParish}
+                  label="Select Parish"
+                  onChange={(e) => setSelectedParish(e.target.value)}
+                >
+                  {parishes.map((parish) => (
+                    <MenuItem key={parish._id} value={parish._id}>
+                      {parish.name}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
             <Grid item xs={12} md={4}>
               <FormControl fullWidth>
                 <InputLabel>Filter by Section</InputLabel>
@@ -337,7 +309,7 @@ useEffect(() => {
                 fullWidth 
                 sx={{ height: '100%' }}
                 onClick={() => window.print()}
-                disabled={!selectedParish || !selectedSection}
+                disabled={!selectedParish}
               >
                 Print Registration
               </Button>
@@ -349,39 +321,59 @@ useEffect(() => {
               <CircularProgress />
             </Box>
           ) : selectedParish ? (
-            <Paper elevation={3} sx={{ p: 3 }} className="print-area">
-              {/* Header with title and managers side by side */}
-              <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={3}>
-                {/* Left spacer */}
-                <Box sx={{ flex: 1 }} />
-                
-                {/* Center - Title */}
-                <Box textAlign="center" sx={{ flex: 2 }}>
-                  <Typography variant="h4" fontWeight="bold">
-                    ഫൊറോന കലോത്സവം {currentYear}
-                  </Typography>
-                  <Typography 
-                    variant="subtitle1" 
-                    sx={{ 
-                      display: 'inline-block',
-                      border: '2px solid black',
-                      borderRadius: '20px',
-                      px: 3,
-                      py: 0.5,
-                      mt: 1,
-                      fontWeight: 'bold'
-                    }}
-                  >
-                    {getCurrentSectionText()}
-                  </Typography>
-                </Box>
+            <Paper elevation={3} sx={{ p: 3 }}>
+              <Box textAlign="center" mb={3} sx={{ position: 'relative' }}>
+                <Typography variant="h4" fontWeight="bold">
+                  ഫൊറോന കലോത്സവം {currentYear}
+                </Typography>
+                <Typography 
+                  variant="subtitle1" 
+                  sx={{ 
+                    display: 'inline-block',
+                    border: '2px solid black',
+                    borderRadius: '20px',
+                    px: 3,
+                    py: 0.5,
+                    mt: 1,
+                    fontWeight: 'bold'
+                  }}
+                >
+                  {getCurrentSectionText()}
+                </Typography>
 
-                {/* Right - Team Managers */}
-                <Box sx={{ flex: 1, textAlign: 'left' }}>
-                  <Typography variant="body2" fontWeight="bold" sx={{ whiteSpace: 'nowrap' }}>
-                    TEAM MANAGERS
+                {/* Team Managers - positioned right, aligned with section label */}
+                <Box sx={{ position: 'absolute', right: 0, top: '50%' }}>
+                  <Typography variant="body2"  fontWeight="bold" sx={{ whiteSpace: 'nowrap' }}>
+                    ടീം മാനേജേർസ്
                   </Typography>
-                  <Box sx={{ textAlign: 'left', display: 'inline-block' }}>
+                  <Box>
+                    {managers.length > 0 
+                      ? managers.map((manager, index) => (
+                          <Typography key={index} variant="body2" sx={{ lineHeight: 1.6, textAlign: 'left' }}>
+                            {index + 1}) {manager.name}<br />
+                            &nbsp;&nbsp;&nbsp;&nbsp;{manager.contactNumber}
+                          </Typography>
+                        ))
+                      : <Typography variant="body2">-</Typography>
+                    }
+                  </Box>
+                </Box>
+                 
+              </Box>
+              
+              {/* Parish, Forane, and Manager Details */}
+             <Box display="flex" justifyContent="space-between" mb={2}>
+                <Typography variant="body2" sx={{ flex: 1, textAlign: 'left' }}>
+                 Parish: {parishDetails?.name || 'ELANGOI'}
+                </Typography>
+                  <Typography variant="body2" sx={{ flex: 1, textAlign: 'left' }}>
+                 Forane: { 'PONKUNNAM'}
+                </Typography>
+                {/* <Box sx={{ display: 'flex', gap: 1 }}>
+                  <Typography variant="body2" sx={{ whiteSpace: 'nowrap', pt: 0.5 }}>
+                    Team Managers <br />Name,  Phone
+                  </Typography>
+                  <Box>
                     {managers.length > 0 
                       ? managers.map((manager, index) => (
                           <Typography key={index} variant="body2" sx={{ lineHeight: 1.6 }}>
@@ -392,20 +384,7 @@ useEffect(() => {
                       : <Typography variant="body2">-</Typography>
                     }
                   </Box>
-                </Box>
-              </Box>
-              
-              {/* Parish and Forane Details */}
-              <Box display="flex" justifyContent="space-between" mb={2}>
-                <Typography variant="body2" sx={{ flex: 1, textAlign: 'left' }}>
-                  PARISH: {parishDetails?.name || '_______________'}
-                </Typography>
-                <Typography variant="body2" sx={{ flex: 1, textAlign: 'center' }}>
-                  FORANE: PONKUNNAM
-                </Typography>
-                <Typography variant="body2" sx={{ flex: 1, textAlign: 'right' }}>
-                
-                </Typography>
+                </Box> */}
               </Box>
 
               <TableContainer>
@@ -427,7 +406,7 @@ useEffect(() => {
                           transform: 'rotate(180deg)',
                           whiteSpace: 'nowrap',
                           padding: '4px',
-                          height: '50px',
+                          height: '80px',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center'
@@ -442,7 +421,7 @@ useEffect(() => {
                           transform: 'rotate(180deg)',
                           whiteSpace: 'nowrap',
                           padding: '4px',
-                          height: '50px',
+                          height: '80px',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
@@ -455,7 +434,8 @@ useEffect(() => {
                       <TableCell>Class</TableCell>
                       <TableCell>Gender (M/F)</TableCell>
                       <TableCell>Dob</TableCell>
-                      {displayEventColumns.map((event, index) => (
+                      {/* {eventColumns.map((event, index) => ( */}
+                      {allSectionEvents.map((event, index) => (
                         <TableCell key={event.id} sx={{ width: '50px', padding: '0' }}>
                           <div className="vertical-text" style={{ 
                             writingMode: 'vertical-rl', 
@@ -463,7 +443,7 @@ useEffect(() => {
                             transform: 'rotate(180deg)',
                             whiteSpace: 'nowrap',
                             padding: '4px',
-                            height: '100px',
+                            height: '150px',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center'
@@ -475,12 +455,12 @@ useEffect(() => {
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {Array.from({ length: Math.max(14, participants.length) }).map((_, index) => {
+                    {Array.from({ length: Math.max(18, participants.length) }).map((_, index) => {
                       const participant = participants[index];
                       return (
                         <TableRow key={index}>
                           <TableCell>{index + 1}</TableCell>
-                          <TableCell></TableCell>
+                          <TableCell>{participant ? '' : ''}</TableCell>
                           <TableCell>{participant?.name || ''}</TableCell>
                           <TableCell>{participant?.standard || ''}</TableCell>
                           <TableCell>{participant?.gender || ''}</TableCell>
@@ -494,11 +474,16 @@ useEffect(() => {
                               : ''
                             }
                           </TableCell>
-                          {displayEventColumns.map((event) => (
+                          {/* {eventColumns.map((event) => (
                             <TableCell key={event.id}>
                               {participant?.events?.some(e => e.eventName === event.name) ? 'X' : ''}
                             </TableCell>
-                          ))}
+                          ))} */}
+                          {allSectionEvents.map((event) => (
+  <TableCell key={event.id}>
+    {participant?.events?.some(e => e.eventName === event.name) ? 'X' : ''}
+  </TableCell>
+))}
                         </TableRow>
                       );
                     })}
@@ -506,23 +491,21 @@ useEffect(() => {
                 </Table>
               </TableContainer>
 
-               <Box className="footer-section">
-                <Box mt={1}>
-                  <Typography variant="body2">
-                    <strong>നിബന്ധനകൾ:</strong>
-                    <ol style={{ paddingLeft: '20px', margin: '4px 0' }}>
-                      <li>പ്രവേശന ഫോം മാതൃകാപരമായി തികച്ചും യഥാർഥ വിവരങ്ങൾ പൂരിപ്പിക്കണം.</li>
-                      <li>മാതാപിതാക്കൾ അറിയിക്കുന്ന വിവരങ്ങൾക്ക് കൈക്കൊപ്പം ചേർക്കണം.</li>
-                      <li>കൂടുതൽ വിവരങ്ങൾക്ക് ENGLISH CAPITAL ഉപയോഗിക്കണം.</li>
-                    </ol>
-                  </Typography>
-                </Box>
+              <Box mt={2} display="flex" justifyContent="space-between">
+                <Typography variant="body2">
+                  <strong>നിബന്ധനകൾ:</strong>
+                  <ol style={{ paddingLeft: '20px' }}>
+                    <li>പ്രവേശന ഫോം മാതൃകാപരമായി തികച്ചും യഥാർഥ വിവരങ്ങൾ പൂരിപ്പിക്കണം.</li>
+                    <li>മാതാപിതാക്കൾ അറിയിക്കുന്ന വിവരങ്ങൾക്ക് കൈക്കൊപ്പം ചേർക്കണം.</li>
+                    <li>കൂടുതൽ വിവരങ്ങൾക്ക് ENGLISH CAPITAL ഉപയോഗിക്കണം.</li>
+                  </ol>
+                </Typography>
+              </Box>
 
-                <Box mt={1} display="flex" justifyContent="space-between">
-                  <Typography variant="body2">തിയ്യതി: _______________</Typography>
-                  <Typography variant="body2">സ്റ്റാഫ് സെക്രട്ടറി: _______________</Typography>
-                  <Typography variant="body2">ഡയറക്ടർ: _______________</Typography>
-                </Box>
+             <Box mt={2} display="flex" justifyContent="space-between">
+                <Typography variant="body2">തിയ്യതി: _______________</Typography>
+                <Typography variant="body2">സ്റ്റാഫ് സെക്രട്ടറി: _______________</Typography>
+                <Typography variant="body2">ഡയറക്ടർ: _______________</Typography>
               </Box>
             </Paper>
           ) : (

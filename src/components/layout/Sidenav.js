@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import React,{ useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useTheme, useMediaQuery } from '@mui/material';
-import logo from "../../assets/images/diocese-logo-new57.png.png";
+import logo from "../../assets/images/diocese-logo-new5.webp";
 import {
   Drawer,
   IconButton,
@@ -96,105 +96,162 @@ const menuItems = [
   {
     type: 'header',
     label: 'MANAGE/CREATE',
+    fold: true,
+    items: [
+      {
+        type: 'single',
+        path: '/forane',
+        label: 'Manage Forane',
+        icon: '🏢',
+      },
+      {
+        type: 'single',
+        path: '/Parish',
+        label: 'Manage Parish',
+        icon: '⛪',
+      },
+      {
+        type: 'single',
+        path: '/PersonManagement',
+        label: 'Manage Category',
+        icon: '🏷️',
+      },
+      {
+        type: 'single',
+        path: '/Family',
+        label: 'Manage Event',
+        icon: '🎉',
+      }, 
+      {
+        type: 'single',
+        path: '/FinanceSettings',
+        label: 'Manage Venue',
+        icon: '🏟️',
+      }
+    ]
   },
+  ,
   {
-    type: 'single',
-    path: '/forane',
-    label: 'Manage Forane',
-    icon: '🏢',
+    type: 'header',
+    label: 'STUDENTS PROFILE',
+    fold: true,
+    items: [
+      {
+        type: 'single',
+        path: '/Student',
+        label: 'Manage Students',
+        icon: '🏢',
+      },
+      {
+        type: 'single',
+        path: '/Parish',
+        label: 'Manage Parish',
+        icon: '⛪',
+      },
+      {
+        type: 'single',
+        path: '/PersonManagement',
+        label: 'Manage Category',
+        icon: '🏷️',
+      },
+      {
+        type: 'single',
+        path: '/Family',
+        label: 'Manage Event',
+        icon: '🎉',
+      }, 
+      {
+        type: 'single',
+        path: '/FinanceSettings',
+        label: 'Manage Venue',
+        icon: '🏟️',
+      }
+    ]
   },
-  {
-    type: 'single',
-    path: '/Parish',
-    label: 'Manage Parish',
-    icon: '⛪',
-  },
-  {
-    type: 'single',
-    path: '/PersonManagement',
-    label: 'Manage Category',
-    icon: '🏷️',
-  },
-  {
-    type: 'single',
-    path: '/Family',
-    label: 'Manage Event',
-    icon: '🎉',
-  }, 
-  {
-    type: 'single',
-    path: '/FinanceSettings',
-    label: 'Manage Venue',
-    icon: '🏟️',
-  }, 
-
   {
     type: 'header',
     label: 'REGISTRATION',
-  },
-  {
-    type: 'single',
-    path: '/FamilyFinance',
-    label: 'Manage Managers',
-    icon: '👥',
-  },
-  {
-    type: 'single',
-    path: '/transactions',
-    label: 'Registration',
-    icon: '📝',
-  },
-  {
-    type: 'single',
-    path: '/report',
-    label: 'Registration Print',
-    icon: '🖨️',
+    fold: true,
+    items: [
+      {
+        type: 'single',
+        path: '/FamilyFinance',
+        label: 'Manage Managers',
+        icon: '👥',
+      },
+      {
+        type: 'single',
+        path: '/transactions',
+        label: 'Registration',
+        icon: '📝',
+      },
+      {
+        type: 'single',
+        path: '/report',
+        label: 'Registration Print',
+        icon: '🖨️',
+      }
+    ]
   },
   {
     type: 'header',
     label: 'JUDGE',
-  },
-  {
-    type: 'single',
-    path: '/project',
-    label: 'Score Entry',
-    icon: '🏆',
-  },
-  {
-    type: 'single',
-    path: '/community',
-    label: 'Stage Allocation',
-    icon: '🎭',
-  },
-  
-  {
-    type: 'single',
-    path: '/yearendtransfer',
-    label: 'Judge Total Sheet',
-    icon: '📊',
-  },
-  {
-    type: 'single',
-    path: '/family-print',
-    label: 'Judge Sheet',
-    icon: '📑',
-  },
-  {
-    type: 'single',
-    path: '/addopening',
-    label: 'Venue Based  List',
-    icon: '📍',
-  },
+    fold: true,
+    items: [
+      {
+        type: 'single',
+        path: '/project',
+        label: 'Score Entry',
+        icon: '🏆',
+      },
+      {
+        type: 'single',
+        path: '/community',
+        label: 'Stage Allocation',
+        icon: '🎭',
+      },
+      {
+        type: 'single',
+        path: '/yearendtransfer',
+        label: 'Judge Total Sheet',
+        icon: '📊',
+      },
+      {
+        type: 'single',
+        path: '/family-print',
+        label: 'Judge Sheet',
+        icon: '📑',
+      },
+      {
+        type: 'single',
+        path: '/addopening',
+        label: 'Venue Based  List',
+        icon: '📍',
+      }
+    ]
+  }
 ];
 
 const Sidenav = ({ color }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [foldedSections, setFoldedSections] = useState({
+    'MANAGE/CREATE': true,
+    'REGISTRATION': true,
+    'JUDGE': true
+  });
   const { pathname } = useLocation();
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
+  };
+
+  const toggleSection = (label) => {
+    setFoldedSections(prev => ({
+      ...prev,
+      [label]: !prev[label]
+    }));
   };
 
   const drawer = (
@@ -215,9 +272,45 @@ const Sidenav = ({ color }) => {
       <Box sx={{ px: 2 }}>
         {menuItems.map((item, index) => (
           item.type === 'header' ? (
-            <StyledListSubheader key={`header-${index}`} disableSticky>
-              {item.label}
-            </StyledListSubheader>
+            <React.Fragment key={`header-${index}`}>
+              <StyledListSubheader 
+                onClick={() => item.fold && toggleSection(item.label)}
+                sx={{ 
+                  cursor: item.fold ? 'pointer' : 'default',
+                  display: 'flex', 
+                  justifyContent: 'space-between', 
+                  alignItems: 'center' 
+                }}
+              >
+                {item.label}
+                {item.fold && (
+                  <span>
+                    {foldedSections[item.label] ? '▼' : '▶'}
+                  </span>
+                )}
+              </StyledListSubheader>
+              
+              {(!item.fold || !foldedSections[item.label]) && item.items && item.items.map((subItem) => (
+                <StyledNavLink
+                  key={subItem.path}
+                  to={subItem.path}
+                  onClick={isMobile ? handleDrawerToggle : undefined}
+                >
+                  <StyledListItem>
+                    <IconWrapper>
+                      {subItem.icon}
+                    </IconWrapper>
+                    <ListItemText
+                      primary={subItem.label}
+                      primaryTypographyProps={{
+                        fontSize: '14px',
+                        fontWeight: pathname === subItem.path ? 500 : 400,
+                      }}
+                    />
+                  </StyledListItem>
+                </StyledNavLink>
+              ))}
+            </React.Fragment>
           ) : (
             <StyledNavLink
               key={item.path}
@@ -240,7 +333,6 @@ const Sidenav = ({ color }) => {
           )
         ))}
       </Box>
-      {/* Last edited time */}
       <Box sx={{ 
         position: 'fixed', 
         bottom: 0, 

@@ -4,16 +4,13 @@ import { Switch, Route, Redirect } from "react-router-dom";
 import { SpeedInsights } from '@vercel/speed-insights/react';
 import { FinancialYearProvider } from './pages/FinancialYearContext';
 import { isAuthenticated } from './utils/auth';
-import { isParishUser } from './utils/parishAuth';
 import Main from "./components/layout/Main";
-import ParishLayout from "./components/layout/ParishLayout";
 import { Backdrop, CircularProgress, Typography, ThemeProvider, createTheme } from '@mui/material';
 
 // Auth Pages
 import LoginPage from './pages/LoginPage';
 import SignUp from "./pages/SignUp";
 import SignIn from "./pages/SignIn";
-import ParishLoginPage from './pages/ParishLoginPage';
 
 // Core Pages
 import Home from "./pages/Home";
@@ -26,7 +23,6 @@ import ParishCredentials from './pages/ParishCredentials';
 import Koottayma from "./pages/SectionManagementPage";
 import Family from "./pages/EventForm";
 import Student from "./pages/StudentDetailsForm";
-
 // Finance Pages
 import PersonManagement from "./pages/CategoryPage";
 import FamilyFinanace from "./pages/FamilyFinanace";
@@ -52,10 +48,13 @@ import BulkFamilyPrintPage from './pages/JudgeMarkEntrySheet';
 import OpeningBalance from './pages/ForaneEventRegistration';
 import YearEndTransfer from './pages/JudgeMarkEntrySheetTotal';
 import logout from './pages/logout';
-import RegistrationNumberAssignment from './pages/RegistrationNumberAssignment';
+import RegistrationNumberAssignment from './pages/RegistrationNumberAssignment'; 
 import ParticipantList from './pages/ParticipantList';
 import ResultsDashboard from './pages/ResultsDashboard';
 import ResultsDashboardPro from './pages/ResultsDashboardPro';
+import ParishLoginPage from './pages/ParishLoginPage';
+
+// Public routes section:
 
 // Styles
 import "antd/dist/antd.css";
@@ -65,8 +64,16 @@ import "./assets/styles/responsive.css";
 const theme = createTheme({
   palette: {
     mode: 'light',
-    primary: { main: '#2563EB', light: '#3B82F6', dark: '#1E40AF' },
-    secondary: { main: '#10B981', light: '#34D399', dark: '#047857' }
+    primary: {
+      main: '#2563EB',
+      light: '#3B82F6',
+      dark: '#1E40AF'
+    },
+    secondary: {
+      main: '#10B981',
+      light: '#34D399',
+      dark: '#047857'
+    }
   }
 });
 
@@ -81,7 +88,9 @@ const LoadingOverlay = () => (
     }}
   >
     <CircularProgress color="inherit" size={60} />
-    <Typography variant="h6" sx={{ mt: 2 }}>Loading...</Typography>
+    <Typography variant="h6" sx={{ mt: 2 }}>
+      Loading...
+    </Typography>
   </Backdrop>
 );
 
@@ -91,11 +100,13 @@ function App() {
   useEffect(() => {
     const initializeApp = async () => {
       try {
+        // Add initial loading delay for smooth transition
         await new Promise(resolve => setTimeout(resolve, 500));
       } finally {
         setLoading(false);
       }
     };
+
     initializeApp();
   }, []);
 
@@ -108,47 +119,51 @@ function App() {
       <FinancialYearProvider>
         <div className="App">
           <Switch>
-            {/* Public pages */}
-            <Route exact path="/" component={ResultsDashboardPro} />
-            <Route exact path="/resultsDashboardPro" component={ResultsDashboardPro} />
+            {/* Root path handling */}
+            {/* <Route exact path="/">
+              {isAuthenticated() ? (
+                <Redirect to="/home" />
+              ) : (
+                <Redirect to="/login" />
+              )}
+            </Route>
 
             {/* Auth routes */}
-            <Route exact path="/login">
-              {isAuthenticated() ? <Redirect to="/home" /> : 
-               isParishUser() ? <Redirect to="/parish/registration" /> : <LoginPage />}
-            </Route>
-            <Route exact path="/parishlogin">
-              {isParishUser() ? <Redirect to="/parish/registration" /> : <ParishLoginPage />}
+            {/* <Route exact path="/login">
+              {isAuthenticated() ? <Redirect to="/home" /> : <LoginPage />}
             </Route>
             <Route exact path="/sign-up" component={SignUp} />
-            <Route exact path="/sign-in" component={SignIn} />
+            <Route exact path="/sign-in" component={SignIn} /> */} 
 
-            {/* ====== PARISH USER ROUTES ====== */}
-            {isParishUser() && (
-              <ParishLayout>
-                <Switch>
-                  <Route exact path="/parish/registration" component={TransactionPage} />
-                  <Route exact path="/parish/managers" component={FamilyNew} />
-                  <Route exact path="/parish/print" component={ChurchReportPage} />
-                  <Route path="*">
-                    <Redirect to="/parish/registration" />
-                  </Route>
-                </Switch>
-              </ParishLayout>
-            )}
+            {/* Public landing page - no auth required */}
+<Route exact path="/" component={ResultsDashboardPro} />
+<Route exact path="/resultsDashboardPro" component={ResultsDashboardPro} />
 
-            {/* ====== ADMIN USER ROUTES ====== */}
+{/* Auth routes */}
+<Route exact path="/login">
+  {isAuthenticated() ? <Redirect to="/home" /> : <LoginPage />}
+</Route>
+<Route exact path="/sign-up" component={SignUp} />
+<Route exact path="/sign-in" component={SignIn} />
+<Route exact path="/parishlogin" component={ParishLoginPage} />
+
+            {/* Protected routes with Main layout */}
             {isAuthenticated() ? (
               <Main>
                 <Switch>
+                  {/* Core routes */}
                   <Route exact path="/home" component={Home} />
                   <Route exact path="/dashboard" component={Home} />
                   <Route exact path="/profile" component={Profile} />
+
+                  {/* Organization routes */}
                   <Route exact path="/forane" component={Forane} />
                   <Route exact path="/parish" component={Parish} />
                   <Route exact path="/koottayma" component={Koottayma} />
                   <Route exact path="/Family" component={Family} />
                   <Route exact path="/Student" component={Student} />
+
+                  {/* Finance routes */}
                   <Route exact path="/PersonManagement" component={PersonManagement} />
                   <Route exact path="/FamilyFinanace" component={FamilyFinanace} />
                   <Route exact path="/FamilyFinance" component={FamilyNew} />
@@ -156,6 +171,8 @@ function App() {
                   <Route exact path="/transactions/new" component={TransactionListPage} />
                   <Route exact path="/transactions" component={TransactionPage} />
                   <Route exact path="/Titheprint" component={Titheprint} />
+
+                  {/* Settings routes */}
                   <Route exact path="/FinanceSettings" component={FinanceSettings} />
                   <Route exact path="/communitysettings" component={CommunitySettings} />
                   <Route exact path="/otherprojectsettings" component={OtherProjectSettings} />
@@ -165,6 +182,8 @@ function App() {
                   <Route exact path="/participantList" component={ParticipantList} />
                   <Route exact path="/resultsDashboard" component={ResultsDashboard} />
                   <Route exact path="/parish-credentials" component={ParishCredentials} />
+                   {/* <Route exact path="/resultsDashboardPro" component={ResultsDashboardPro} /> */}
+                  {/* Other routes */}
                   <Route exact path="/movefamily" component={MoveFamily} />
                   <Route exact path="/community" component={Community} />
                   <Route exact path="/project" component={Project} />
@@ -174,7 +193,11 @@ function App() {
                   <Route exact path="/addopening" component={OpeningBalance} />
                   <Route exact path="/yearendtransfer" component={YearEndTransfer} />
                   <Route exact path="/logout" component={logout} />
-                  <Route path="*"><Redirect to="/home" /></Route>
+
+                  {/* Catch all route - redirect to home */}
+                  <Route path="*">
+                    <Redirect to="/home" />
+                  </Route>
                 </Switch>
               </Main>
             ) : (

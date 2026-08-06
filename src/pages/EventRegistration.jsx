@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axiosInstance from "../axiosConfig";
+import { getParishId } from '../utils/parishAuth';
 import { 
   Box, 
   Typography, 
@@ -110,7 +111,10 @@ const EventRegistration = () => {
   });
   // New state for tracking cross-section selections
   const [crossSectionSelections, setCrossSectionSelections] = useState({});
-  
+  useEffect(() => {
+  const pid = getParishId();
+  if (pid) setSelectedParish(pid);
+}, []);
   useEffect(() => {
     const allEventNames = participants.flatMap(p => 
       p.events.map(e => e.eventName)
@@ -477,18 +481,31 @@ useEffect(() => {
     }
   };
 
-  const fetchParishes = async () => {
+  // const fetchParishes = async () => {
+  //   try {
+  //     setIsLoading(true);
+  //     const response = await axiosInstance.get("/parish");
+  //     setParishes(response.data || []);
+  //     setIsLoading(false);
+  //   } catch (err) {
+  //     console.error("Failed to fetch Parishes");
+  //     setIsLoading(false);
+  //   }
+  // };
+const fetchParishes = async () => {
     try {
       setIsLoading(true);
       const response = await axiosInstance.get("/parish");
-      setParishes(response.data || []);
+      const filtered = (response.data || []).filter(
+        (p) => p.forane === "673799a3cb9b4aa181e53fa2" || p.forane?._id === "673799a3cb9b4aa181e53fa2"
+      );
+      setParishes(filtered);
       setIsLoading(false);
     } catch (err) {
       console.error("Failed to fetch Parishes");
       setIsLoading(false);
     }
   };
-
   const fetchEventParticipantCounts = async () => {
     try {
       if (!selectedParish) return;
@@ -1052,7 +1069,7 @@ useEffect(() => {
     });
     
     const tableHeaders = [
-      'Reg. No.',
+      // 'Reg. No.',
       'Name',
       'Class',
       'Gender',
@@ -1929,7 +1946,7 @@ useEffect(() => {
                 <TableHead>
                   <TableRow>
                     <TableCell>No.</TableCell>
-                    <TableCell>Reg. No.</TableCell>
+                    {/* <TableCell>Reg. No.</TableCell> */}
                     <TableCell>Name</TableCell>
                     <TableCell>Class</TableCell>
                     <TableCell>Section</TableCell>
@@ -1952,7 +1969,7 @@ useEffect(() => {
                     return (
                       <TableRow key={participant._id || index}>
                         <TableCell>{index + 1}</TableCell>
-                        <TableCell>
+                        {/* <TableCell>
                           {participant.registrationNumber ? (
                             <Chip 
                               size="small" 
@@ -1961,7 +1978,7 @@ useEffect(() => {
                               color="primary"
                             />
                           ) : 'N/A'}
-                        </TableCell>
+                        </TableCell> */}
                         <TableCell>{participant.name}</TableCell>
                         <TableCell>{participant.standard}</TableCell>
                         <TableCell>
@@ -2085,28 +2102,29 @@ useEffect(() => {
               <Typography>{message}</Typography>
             </Paper>
           )}
-
-          <Grid container spacing={3} sx={{ mb: 3 }}>
-            <Grid item xs={12}>
-              <FormControl fullWidth>
-                <InputLabel>Select Parish</InputLabel>
-                <Select
-                  value={selectedParish}
-                  onChange={(e) => setSelectedParish(e.target.value)}
-                  label="Select Parish"
-                >
-                  <MenuItem value="">
-                    <em>None</em>
-                  </MenuItem>
-                  {parishes.map((parish) => (
-                    <MenuItem key={parish._id} value={parish._id}>
-                      {parish.name}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Grid>
-          </Grid>
+{!getParishId() && (
+  <Grid container spacing={3} sx={{ mb: 3 }}>
+    <Grid item xs={12}>
+      <FormControl fullWidth>
+        <InputLabel>Select Parish</InputLabel>
+        <Select
+          value={selectedParish}
+          onChange={(e) => setSelectedParish(e.target.value)}
+          label="Select Parish"
+        >
+          <MenuItem value="">
+            <em>None</em>
+          </MenuItem>
+          {parishes.map((parish) => (
+            <MenuItem key={parish._id} value={parish._id}>
+              {parish.name}
+            </MenuItem>
+          ))}
+        </Select>
+      </FormControl>
+    </Grid>
+  </Grid>
+)}
 
           <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
             <Button
@@ -2130,14 +2148,14 @@ useEffect(() => {
               >
                 Refresh
               </Button>
-              <Button
+              {/* <Button
                 variant="outlined"
                 startIcon={<FileDown size={18} />}
                 onClick={handleExportPDF}
                 disabled={!participants.length}
               >
                 Export to PDF
-              </Button>
+              </Button> */}
             </Box>
           </Box>
 

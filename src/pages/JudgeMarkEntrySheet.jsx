@@ -46,12 +46,28 @@ const printStyles = `
       size: A4 portrait;
       margin: 10mm;
     }
-    body {
-      zoom: 0.85;
+    .no-print { display: none !important; }
+    nav, header, footer, aside,
+    .MuiDrawer-root, .MuiAppBar-root,
+    .sidebar, .navbar, .topbar,
+    [class*="Sidebar"], [class*="Navbar"], [class*="AppBar"],
+    [class*="drawer"], [class*="header"] {
+      display: none !important;
+    }
+    .print-area {
+      position: fixed !important;
+      left: 0 !important;
+      top: 0 !important;
+      width: 100% !important;
+      margin: 0 !important;
+      padding: 10px !important;
+      box-shadow: none !important;
+    }
+    .print-area * {
+      visibility: visible !important;
     }
   }
 `;
-
 const JudgeMarkEntrySheet = () => {
   const [foranes, setForanes] = useState([]);
   const [selectedForane, setSelectedForane] = useState('');
@@ -116,14 +132,14 @@ const JudgeMarkEntrySheet = () => {
   }, [selectedForane, selectedVenue]);
 
   // Number of entries (rows) to show
-  const numberOfEntries = 16;
+  const numberOfEntries = 14;
 
   return (
     <ThemeProvider theme={theme}>
       <style>{printStyles}</style>
       <Container maxWidth="lg">
         <Box sx={{ py: 4 }}>
-          <Grid container spacing={2} sx={{ mb: 3 }}>
+        <Grid container spacing={2} sx={{ mb: 3 }} className="no-print">
             <Grid item xs={12} md={4}>
               <FormControl fullWidth>
                 <InputLabel>Select Forane</InputLabel>
@@ -189,13 +205,13 @@ const JudgeMarkEntrySheet = () => {
           </Grid>
 
           {selectedEvent && (
-            <Paper elevation={3} sx={{ p: 3 }}>
+            <Paper elevation={3} sx={{ p: 3 }} className="print-area">
               <Box textAlign="center" mb={3}>
                 <Typography variant="h5" fontWeight="bold">
-                  SUNDAY SCHOOL BIBLE KALOLSAVAM - 2024
+                  BIBLE KALOLSAVAM - 2026
                 </Typography>
                 <Typography variant="subtitle1">
-                  {foranes.find(f => f._id === selectedForane)?.name} Forane
+                  {foranes.find(f => f._id === selectedForane)?.name} FORANE
                 </Typography>
               </Box>
 

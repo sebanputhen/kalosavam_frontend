@@ -110,7 +110,9 @@ const EventScoringPage = () => {
       setIsLoading(true);
       // Fetch foranes
       const foraneResponse = await axiosInstance.get('/forane');
-      setForanes(foraneResponse.data || []);
+      const allForanes = foraneResponse.data || [];
+      setForanes(allForanes.filter(f => f._id === '673799a3cb9b4aa181e53fa2'));
+      // setForanes(foraneResponse.data || []);
 
       // Fetch categories
       const categoriesResponse = await axiosInstance.get('/categories');
@@ -373,13 +375,13 @@ const EventScoringPage = () => {
     
     switch(grade) {
       case 'A':
-        gradePoints = 10;
-        break;
-      case 'B':
         gradePoints = 5;
         break;
-      case 'C':
+      case 'B':
         gradePoints = 3;
+        break;
+      case 'C':
+        gradePoints = 1;
         break;
       default:
         gradePoints = 0;
@@ -762,9 +764,9 @@ const EventScoringPage = () => {
                     <Typography variant="body2" sx={{ mb: 0.5 }}>
                       <strong>Grade Criteria (% of Max Marks):</strong>
                     </Typography>
-                    <Typography variant="body2">• A: 80%+ (10 points)</Typography>
-                    <Typography variant="body2">• B: 60-79% (5 points)</Typography>
-                    <Typography variant="body2">• C: 40-59% (3 points)</Typography>
+                    <Typography variant="body2">• A: 80%+ (5 points)</Typography>
+                    <Typography variant="body2">• B: 60-79% (3 points)</Typography>
+                    <Typography variant="body2">• C: 40-59% (1 points)</Typography>
                   </Grid>
                   <Grid item xs={12} md={4}>
                     <Typography variant="body2" sx={{ mb: 0.5 }}>

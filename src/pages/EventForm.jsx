@@ -298,23 +298,27 @@ const SinglePageApp = () => {
     return gender.charAt(0).toUpperCase() + gender.slice(1);
   };
 
-  const formatCategory = (categoryId) => {
-    if (!categoryId) return '';
-    const category = categories.find(cat => cat._id === categoryId);
-    return category ? category.name : 
-      (typeof categoryId === 'string' 
-        ? categoryId.charAt(0).toUpperCase() + categoryId.slice(1) 
+ const formatCategory = (category) => {
+    if (!category) return '';
+    if (typeof category === 'object' && category.name) return category.name;
+    const found = categories.find(cat => cat._id === category);
+    return found ? found.name : 
+      (typeof category === 'string' 
+        ? category.charAt(0).toUpperCase() + category.slice(1) 
         : 'Unknown');
   };
 
   // Filtered events
-  const filteredEvents = events.filter(event => 
-    (!selectedCategory || event.category === selectedCategory) &&
-    (!selectedSection || event.section === selectedSection) &&
-    (event.eventName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-     event.section.toLowerCase().includes(searchQuery.toLowerCase()) ||
-     formatCategory(event.category).toLowerCase().includes(searchQuery.toLowerCase()))
-  );
+ const filteredEvents = events.filter(event => {
+    const catId = typeof event.category === 'object' ? event.category?._id : event.category;
+    return (
+      (!selectedCategory || catId === selectedCategory) &&
+      (!selectedSection || event.section === selectedSection) &&
+      (event.eventName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+       event.section.toLowerCase().includes(searchQuery.toLowerCase()) ||
+       formatCategory(event.category).toLowerCase().includes(searchQuery.toLowerCase()))
+    );
+  });
 
   // Render cross-section participation fields
   const renderCrossSectionFields = () => {

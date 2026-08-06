@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axiosInstance from "../axiosConfig";
+import { getParishId } from '../utils/parishAuth';
 import { 
   Container, 
   Typography, 
@@ -51,7 +52,10 @@ const ManagerForm = () => {
   useEffect(() => {
     fetchParishes();
   }, []);
-
+useEffect(() => {
+  const pid = getParishId();
+  if (pid) setFormData(prev => ({ ...prev, parish: pid }));
+}, []);
   // Load managers when parish changes
   useEffect(() => {
     if (formData.parish) {
@@ -62,18 +66,31 @@ const ManagerForm = () => {
   }, [formData.parish]);
 
   // Function to fetch parishes from the database
-  const fetchParishes = async () => {
+  // const fetchParishes = async () => {
+  //   try {
+  //     setIsLoading(true);
+  //     const response = await axiosInstance.get("/parish");
+  //     setParishes(response.data || []);
+  //     setIsLoading(false);
+  //   } catch (err) {
+  //     console.error("Failed to fetch Parishes");
+  //     setIsLoading(false);
+  //   }
+  // };
+const fetchParishes = async () => {
     try {
       setIsLoading(true);
       const response = await axiosInstance.get("/parish");
-      setParishes(response.data || []);
+      const filtered = (response.data || []).filter(
+        (p) => p.forane === "673799a3cb9b4aa181e53fa2" || p.forane?._id === "673799a3cb9b4aa181e53fa2"
+      );
+      setParishes(filtered);
       setIsLoading(false);
     } catch (err) {
       console.error("Failed to fetch Parishes");
       setIsLoading(false);
     }
   };
-
   // Function to fetch managers by parish
   const fetchManagersByParish = async (parishId) => {
     try {
@@ -285,24 +302,26 @@ const ManagerForm = () => {
         <Paper elevation={3} sx={{ p: 3 }}>
           <form onSubmit={handleSubmit}>
             <Grid container spacing={2}>
-              <Grid item xs={12} md={6}>
-                <FormControl fullWidth required>
-                  <InputLabel>Parish</InputLabel>
-                  <Select
-                    value={formData.parish}
-                    label="Parish"
-                    onChange={handleParishChange}
-                    disabled={isEditing}
-                  >
-                    <MenuItem value="">Select Parish</MenuItem>
-                    {parishes.map((parish) => (
-                      <MenuItem key={parish._id} value={parish._id}>
-                        {parish.name}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </Grid>
+              {!getParishId() && (
+  <Grid item xs={12} md={6}>
+    <FormControl fullWidth required>
+      <InputLabel>Parish</InputLabel>
+      <Select
+        value={formData.parish}
+        label="Parish"
+        onChange={handleParishChange}
+        disabled={isEditing}
+      >
+        <MenuItem value="">Select Parish</MenuItem>
+        {parishes.map((parish) => (
+          <MenuItem key={parish._id} value={parish._id}>
+            {parish.name}
+          </MenuItem>
+        ))}
+      </Select>
+    </FormControl>
+  </Grid>
+)}
               
               <Grid item xs={12} md={6}>
                 <FormControl fullWidth required>

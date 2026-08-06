@@ -110,7 +110,10 @@ const StageAllocation = () => {
     try {
       setIsLoading(true);
       const response = await axiosInstance.get("/forane");
-      setForanes(response.data || []);
+      const allForanes = response.data || [];
+      setForanes(allForanes.filter(f => f._id === '673799a3cb9b4aa181e53fa2'));
+      
+      // setForanes(response.data || []);
       setIsLoading(false);
     } catch (err) {
       console.error("Failed to fetch Foranes", err);
