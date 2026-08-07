@@ -207,7 +207,7 @@ const fetchAllData = async () => {
               </Box>
               {pct <= 25 && <Typography sx={{ position: 'absolute', left: `${Math.max(pct + 1, 2)}%`, top: '50%', transform: 'translateY(-50%)', fontSize: '10px', fontWeight: 600, color: '#64748B' }}>{p.totalPoints}</Typography>}
             </Box>
-            <Typography sx={{ fontSize: '10px', color: '#94A3B8', minWidth: 50, textAlign: 'right' }}>{p.families} fam</Typography>
+            {/* <Typography sx={{ fontSize: '10px', color: '#94A3B8', minWidth: 50, textAlign: 'right' }}>{p.families} fam</Typography> */}
             <Box sx={{ display: 'flex', gap: 0.3, minWidth: 60 }}>{p.firsts > 0 && <Typography sx={{ fontSize: '10px' }}>🥇{p.firsts}</Typography>}{p.seconds > 0 && <Typography sx={{ fontSize: '10px' }}>🥈{p.seconds}</Typography>}{p.thirds > 0 && <Typography sx={{ fontSize: '10px' }}>🥉{p.thirds}</Typography>}</Box>
           </Box>);
         })}{standings.length === 0 && <Typography sx={{ textAlign: 'center', py: 3, color: '#CBD5E1' }}>No parishes</Typography>}</Box>
@@ -237,12 +237,12 @@ const fetchAllData = async () => {
                     <Box sx={{ width: 8, height: 8, borderRadius: '50%', background: '#34D399', animation: 'pulse 2s infinite', '@keyframes pulse': { '0%,100%': { opacity: 1 }, '50%': { opacity: 0.3 } } }} />
                     <Typography sx={{ fontSize: '12px', fontWeight: 600, opacity: 0.9, letterSpacing: '1px' }}>LIVE RESULTS</Typography>
                   </Box>
-                  <Typography variant="h4" sx={{ fontWeight: 900, lineHeight: 1.1 }}>ഫൊറോന കലോത്സവം 2026</Typography>
+                  <Typography variant="h4" sx={{ fontWeight: 900, lineHeight: 1.1 ,color: '#fff'}}>ഫൊറോന കലോത്സവം 2026</Typography>
                   <Typography sx={{ fontSize: '14px', opacity: 0.8, mt: 0.5 }}>Forane Kalolsavam — Results & Analytics Dashboard</Typography>
                 </Box>
                 <Box display="flex" gap={1}>
                   <IconButton onClick={fetchAllData} sx={{ color: '#fff', border: '1px solid rgba(255,255,255,0.25)', borderRadius: 2 }}><RefreshCw size={18} /></IconButton>
-                  <Button variant="outlined" onClick={() => window.print()} sx={{ color: '#fff', borderColor: 'rgba(255,255,255,0.25)', borderRadius: 2, textTransform: 'none' }}>Print</Button>
+                  {/* <Button variant="outlined" onClick={() => window.print()} sx={{ color: '#fff', borderColor: 'rgba(255,255,255,0.25)', borderRadius: 2, textTransform: 'none' }}>Print</Button> */}
                 </Box>
               </Box>
             </Paper>

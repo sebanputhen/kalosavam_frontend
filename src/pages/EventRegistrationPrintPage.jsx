@@ -508,14 +508,14 @@ useEffect(() => {
 
                <Box className="footer-section">
                 <Box mt={1}>
-                  <Typography variant="body2">
+                  {/* <Typography variant="body2">
                     <strong>നിബന്ധനകൾ:</strong>
                     <ol style={{ paddingLeft: '20px', margin: '4px 0' }}>
                       <li>പ്രവേശന ഫോം മാതൃകാപരമായി തികച്ചും യഥാർഥ വിവരങ്ങൾ പൂരിപ്പിക്കണം.</li>
                       <li>മാതാപിതാക്കൾ അറിയിക്കുന്ന വിവരങ്ങൾക്ക് കൈക്കൊപ്പം ചേർക്കണം.</li>
                       <li>കൂടുതൽ വിവരങ്ങൾക്ക് ENGLISH CAPITAL ഉപയോഗിക്കണം.</li>
                     </ol>
-                  </Typography>
+                  </Typography> */}
                 </Box>
 
                 <Box mt={1} display="flex" justifyContent="space-between">
