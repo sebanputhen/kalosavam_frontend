@@ -71,27 +71,49 @@ const EventRegistration = () => {
   })), [events]);
 
   // ====== PROCESS REGISTRATIONS (reusable) ======
-  const processRegistrations = useCallback((registrations) => {
-    const grouped = {};
-    registrations.forEach(reg => {
-      const key = `${reg.name}|${reg.standard}|${reg.gender}|${new Date(reg.dob).toISOString().split('T')[0]}`;
-      if (!grouped[key]) {
-        grouped[key] = {
-          _id: reg._id, name: reg.name, standard: reg.standard,
-          gender: reg.gender, dob: reg.dob, parish: selectedParish,
-          registrationNumber: reg.registrationNumber || null, events: []
-        };
-      }
-      grouped[key].events.push({
-        eventId: reg.event._id, eventName: reg.event.eventName,
-        eventType: reg.event.eventType, section: reg.event.section,
-        category: reg.event.category?.name || '', registrationId: reg._id,
-        isCrossSectionParticipation: reg.isCrossSectionParticipation || false
-      });
-    });
-    return Object.values(grouped);
-  }, [selectedParish]);
+  // const processRegistrations = useCallback((registrations) => {
+  //   const grouped = {};
+  //   registrations.forEach(reg => {
+  //     const key = `${reg.name}|${reg.standard}|${reg.gender}|${new Date(reg.dob).toISOString().split('T')[0]}`;
+  //     if (!grouped[key]) {
+  //       grouped[key] = {
+  //         _id: reg._id, name: reg.name, standard: reg.standard,
+  //         gender: reg.gender, dob: reg.dob, parish: selectedParish,
+  //         registrationNumber: reg.registrationNumber || null, events: []
+  //       };
+  //     }
+  //     grouped[key].events.push({
+  //       eventId: reg.event._id, eventName: reg.event.eventName,
+  //       eventType: reg.event.eventType, section: reg.event.section,
+  //       category: reg.event.category?.name || '', registrationId: reg._id,
+  //       isCrossSectionParticipation: reg.isCrossSectionParticipation || false
+  //     });
+  //   });
+  //   return Object.values(grouped);
+  // }, [selectedParish]);
+const processRegistrations = useCallback((registrations) => {
+  const grouped = {};
+  registrations.forEach(reg => {
+    // Skip registrations with missing event data
+    if (!reg.event) return;
 
+    const key = `${reg.name}|${reg.standard}|${reg.gender}|${new Date(reg.dob).toISOString().split('T')[0]}`;
+    if (!grouped[key]) {
+      grouped[key] = {
+        _id: reg._id, name: reg.name, standard: reg.standard,
+        gender: reg.gender, dob: reg.dob, parish: selectedParish,
+        registrationNumber: reg.registrationNumber || null, events: []
+      };
+    }
+    grouped[key].events.push({
+      eventId: reg.event._id, eventName: reg.event.eventName,
+      eventType: reg.event.eventType, section: reg.event.section,
+      category: reg.event.category?.name || '', registrationId: reg._id,
+      isCrossSectionParticipation: reg.isCrossSectionParticipation || false
+    });
+  });
+  return Object.values(grouped);
+}, [selectedParish]);
   const processStats = (statsData) => {
     const m = {};
     (statsData || []).forEach(s => { m[s.eventId] = s.participantCount; });
@@ -120,28 +142,58 @@ const EventRegistration = () => {
   }, []);
 
   // ====== PARISH CHANGE — parallel fetch ======
-  useEffect(() => {
-    if (!selectedParish) { setParticipants([]); setEventParticipantCounts({}); return; }
-    const load = async () => {
-      setIsLoading(true);
-      try {
-        const [regRes, statsRes] = await Promise.all([
-          axiosInstance.get(`/registrations/parish/${selectedParish}`),
-          axiosInstance.get(`/api/event-stats/parish/${selectedParish}`).catch(() => ({ data: { data: { stats: [] } } }))
-        ]);
-        setParticipants(processRegistrations(regRes.data.data.registrations || []));
-        const countsMap = processStats(statsRes.data.data.stats);
-        try {
-          const crossRes = await axiosInstance.get(`/api/event-stats/parish/${selectedParish}/cross-section`);
-          (crossRes.data.data.stats || []).forEach(s => { countsMap[`${s.eventId}_cross`] = s.participantCount; });
-        } catch (e) { /* ok */ }
-        setEventParticipantCounts(countsMap);
-      } catch (err) { console.error("Parish load failed", err); setMessage("Error loading data"); }
-      finally { setIsLoading(false); }
-    };
-    load();
-  }, [selectedParish, processRegistrations]);
+  // useEffect(() => {
+  //   if (!selectedParish) { setParticipants([]); setEventParticipantCounts({}); return; }
+  //   const load = async () => {
+  //     setIsLoading(true);
+  //     try {
+  //       const [regRes, statsRes] = await Promise.all([
+  //         axiosInstance.get(`/registrations/parish/${selectedParish}`),
+  //         axiosInstance.get(`/api/event-stats/parish/${selectedParish}`).catch(() => ({ data: { data: { stats: [] } } }))
+  //       ]);
+  //       setParticipants(processRegistrations(regRes.data.data.registrations || []));
+  //       const countsMap = processStats(statsRes.data.data.stats);
+  //       try {
+  //         const crossRes = await axiosInstance.get(`/api/event-stats/parish/${selectedParish}/cross-section`);
+  //         (crossRes.data.data.stats || []).forEach(s => { countsMap[`${s.eventId}_cross`] = s.participantCount; });
+  //       } catch (e) { /* ok */ }
+  //       setEventParticipantCounts(countsMap);
+  //     } catch (err) { console.error("Parish load failed", err); setMessage("Error loading data"); }
+  //     finally { setIsLoading(false); }
+  //   };
+  //   load();
+  // }, [selectedParish, processRegistrations]);
+useEffect(() => {
+  if (!selectedParish) { setParticipants([]); setEventParticipantCounts({}); return; }
+  const load = async () => {
+    setIsLoading(true);
+    try {
+      const [regRes, statsRes] = await Promise.all([
+        axiosInstance.get(`/registrations/parish/${selectedParish}`),
+        axiosInstance.get(`/api/event-stats/parish/${selectedParish}`).catch(() => ({ data: { data: { stats: [] } } }))
+      ]);
 
+      // Defensive access — log actual shape if it fails
+      const registrations = regRes.data?.data?.registrations || regRes.data?.registrations || [];
+      if (!registrations.length) {
+        console.warn('Registration response shape:', JSON.stringify(Object.keys(regRes.data || {})));
+      }
+
+      setParticipants(processRegistrations(registrations));
+      const countsMap = processStats(statsRes.data?.data?.stats || []);
+      try {
+        const crossRes = await axiosInstance.get(`/api/event-stats/parish/${selectedParish}/cross-section`);
+        (crossRes.data?.data?.stats || []).forEach(s => { countsMap[`${s.eventId}_cross`] = s.participantCount; });
+      } catch (e) { /* ok */ }
+      setEventParticipantCounts(countsMap);
+      setMessage(''); // Clear any previous error
+    } catch (err) {
+      console.error("Parish load failed:", err.response?.status, err.response?.data || err.message);
+      setMessage(`Error loading data: ${err.response?.data?.message || err.message}`);
+    } finally { setIsLoading(false); }
+  };
+  load();
+}, [selectedParish, processRegistrations]);
   // ====== SECTION/CLASS EFFECTS ======
   useEffect(() => {
     setAvailableClasses(sectionInDialog ? (SECTION_CONFIG[sectionInDialog]?.classes || []) : ['IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII']);
@@ -579,15 +631,8 @@ const EventRegistration = () => {
                         <Box sx={{ mt: 1 }}>
                           <Typography variant="body2" gutterBottom><strong>Events:</strong> {secEvents.length}{crossEvents.length > 0 && ` + ${crossEvents.length} Cross`}</Typography>
                           <Typography variant="body2" gutterBottom><strong>Total Participants:</strong> {
-                            Object.entries(eventParticipantCounts)
-                              .filter(([eid]) => secEvents.some(e => e._id === eid))
-                              .reduce((sum, [, c]) => sum + c, 0)
-                          }{(() => {
-                            const crossCount = Object.entries(eventParticipantCounts)
-                              .filter(([eid]) => eid.endsWith('_cross') && crossEvents.some(e => `${e._id}_cross` === eid))
-                              .reduce((sum, [, c]) => sum + c, 0);
-                            return crossCount > 0 ? ` + ${crossCount} Cross-Section` : '';
-                          })()}</Typography>
+  participants.filter(p => getParticipantSection(p.standard) === section).length
+}</Typography>
                           <Grid container spacing={1} sx={{ mt: 1 }}>
                             <Grid item xs={6}><Paper variant="outlined" sx={{ p: 1, textAlign: 'center', borderColor: theme.palette.primary.main, bgcolor: 'rgba(37,99,235,0.05)' }}>
                               <Typography variant="body2" fontWeight="600" color="primary">Individual</Typography><Typography variant="h6" color="primary">{singles.length}</Typography>
