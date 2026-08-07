@@ -222,145 +222,250 @@ const EventScoringPage = () => {
     setIsLoading(false);
   }
 };
-  const fetchEventParticipants = async () => {
-    if (!selectedForane || !selectedEvent) return;
+  // const fetchEventParticipants = async () => {
+  //   if (!selectedForane || !selectedEvent) return;
   
-    try {
-      setIsLoading(true);
+  //   try {
+  //     setIsLoading(true);
       
-      // First, check if scoring already exists for this event and forane
-      let existingScoring = null;
-      try {
-        const scoringResponse = await axiosInstance.get(`/event-scoring/forane/${selectedForane}/event/${selectedEvent}`);
-        if (scoringResponse.data && scoringResponse.data.success && scoringResponse.data.data.eventScoring) {
-          existingScoring = scoringResponse.data.data.eventScoring;
+  //     // First, check if scoring already exists for this event and forane
+  //     let existingScoring = null;
+  //     try {
+  //       const scoringResponse = await axiosInstance.get(`/event-scoring/forane/${selectedForane}/event/${selectedEvent}`);
+  //       if (scoringResponse.data && scoringResponse.data.success && scoringResponse.data.data.eventScoring) {
+  //         existingScoring = scoringResponse.data.data.eventScoring;
           
-          // Update max marks from existing scoring data
-          if (existingScoring.maxMarks) {
-            setMaxMarks(existingScoring.maxMarks);
-          }
-        }
-      } catch (error) {
-        // No existing scoring data found, continue with regular flow
-        console.log('No existing scoring found, creating new scoring record');
-      }
+  //         // Update max marks from existing scoring data
+  //         if (existingScoring.maxMarks) {
+  //           setMaxMarks(existingScoring.maxMarks);
+  //         }
+  //       }
+  //     } catch (error) {
+  //       // No existing scoring data found, continue with regular flow
+  //       console.log('No existing scoring found, creating new scoring record');
+  //     }
       
-      // Fetch registrations for the selected forane and event
-      const response = await axiosInstance.get(`/registrations/forane/${selectedForane}/event/${selectedEvent}`);
+  //     // Fetch registrations for the selected forane and event
+  //     const response = await axiosInstance.get(`/registrations/forane/${selectedForane}/event/${selectedEvent}`);
       
-      // Process registrations differently based on event type (individual vs group)
-      const selectedEventData = events.find(event => event._id === selectedEvent);
-      const isGroupEvent = selectedEventData?.eventType === 'group';
+  //     // Process registrations differently based on event type (individual vs group)
+  //     const selectedEventData = events.find(event => event._id === selectedEvent);
+  //     const isGroupEvent = selectedEventData?.eventType === 'group';
       
-      let processedParticipants = [];
+  //     let processedParticipants = [];
       
-      if (isGroupEvent) {
-        // For group events, get only unique parishes
-        const uniqueParishes = [];
-        const parishTracker = new Set();
+  //     if (isGroupEvent) {
+  //       // For group events, get only unique parishes
+  //       const uniqueParishes = [];
+  //       const parishTracker = new Set();
         
-        // First, collect all unique parish names
-        response.data.data.registrations.forEach(reg => {
-          const parishName = reg.parish?.name || 'Unknown Parish';
-          const parishId = reg.parish?._id || null;
+  //       // First, collect all unique parish names
+  //       response.data.data.registrations.forEach(reg => {
+  //         const parishName = reg.parish?.name || 'Unknown Parish';
+  //         const parishId = reg.parish?._id || null;
           
-          // Use Set to track unique parish names
-          if (!parishTracker.has(parishName)) {
-            parishTracker.add(parishName);
-            uniqueParishes.push({
-              _id: reg._id,
-              name: parishName,
-              participantType: 'Group',
-              parish: parishName,
-              parishId: parishId, // Store the parish ID
-              registrationNumber: reg.groupRegistrationNumber || '',
-              totalMarks: 0,
-              grade: '',
-              position: '',
-              gradePoints: 0,
-              positionPoints: 0,
-              totalPoints: 0
-            });
-          }
-        });
+  //         // Use Set to track unique parish names
+  //         if (!parishTracker.has(parishName)) {
+  //           parishTracker.add(parishName);
+  //           uniqueParishes.push({
+  //             _id: reg._id,
+  //             name: parishName,
+  //             participantType: 'Group',
+  //             parish: parishName,
+  //             parishId: parishId, // Store the parish ID
+  //             registrationNumber: reg.groupRegistrationNumber || '',
+  //             totalMarks: 0,
+  //             grade: '',
+  //             position: '',
+  //             gradePoints: 0,
+  //             positionPoints: 0,
+  //             totalPoints: 0
+  //           });
+  //         }
+  //       });
         
-        processedParticipants = uniqueParishes;
-      } else {
-        // For individual events, show all participants
-        processedParticipants = response.data.data.registrations.map(reg => ({
-          _id: reg._id,
-          name: reg.name,
-          participantType: 'Individual',
-          parish: reg.parish?.name || 'Unknown Parish',
-          parishId: reg.parish?._id || null, // Store the parish ID
-          standard: reg.standard,
-          gender: reg.gender,
-          registrationNumber: reg.registrationNumber || '',
-          totalMarks: 0,
-          grade: '',
-          position: '',
-          gradePoints: 0,
-          positionPoints: 0,
-          totalPoints: 0
-        }));
-      }
+  //       processedParticipants = uniqueParishes;
+  //     } else {
+  //       // For individual events, show all participants
+  //       processedParticipants = response.data.data.registrations.map(reg => ({
+  //         _id: reg._id,
+  //         name: reg.name,
+  //         participantType: 'Individual',
+  //         parish: reg.parish?.name || 'Unknown Parish',
+  //         parishId: reg.parish?._id || null, // Store the parish ID
+  //         standard: reg.standard,
+  //         gender: reg.gender,
+  //         registrationNumber: reg.registrationNumber || '',
+  //         totalMarks: 0,
+  //         grade: '',
+  //         position: '',
+  //         gradePoints: 0,
+  //         positionPoints: 0,
+  //         totalPoints: 0
+  //       }));
+  //     }
       
-      // If we have existing scoring data, merge it with the participants data
-      if (existingScoring && existingScoring.participants && existingScoring.participants.length > 0) {
-        processedParticipants = processedParticipants.map(participant => {
-          // Try to find matching participant in existing scoring data
-          const existingParticipant = existingScoring.participants.find(p => 
-            p.participantId === participant._id || 
-            // For group events, match by parish name
-            (isGroupEvent && p.parish === participant.parish)
-          );
+  //     // If we have existing scoring data, merge it with the participants data
+  //     if (existingScoring && existingScoring.participants && existingScoring.participants.length > 0) {
+  //       processedParticipants = processedParticipants.map(participant => {
+  //         // Try to find matching participant in existing scoring data
+  //         const existingParticipant = existingScoring.participants.find(p => 
+  //           p.participantId === participant._id || 
+  //           // For group events, match by parish name
+  //           (isGroupEvent && p.parish === participant.parish)
+  //         );
           
-          if (existingParticipant) {
-            return {
-              ...participant,
-              totalMarks: existingParticipant.totalMarks || 0,
-              grade: existingParticipant.grade || '',
-              position: existingParticipant.position || '',
-              gradePoints: existingParticipant.gradePoints || 0,
-              positionPoints: existingParticipant.positionPoints || 0,
-              totalPoints: existingParticipant.totalPoints || 0
-            };
-          }
+  //         if (existingParticipant) {
+  //           return {
+  //             ...participant,
+  //             totalMarks: existingParticipant.totalMarks || 0,
+  //             grade: existingParticipant.grade || '',
+  //             position: existingParticipant.position || '',
+  //             gradePoints: existingParticipant.gradePoints || 0,
+  //             positionPoints: existingParticipant.positionPoints || 0,
+  //             totalPoints: existingParticipant.totalPoints || 0
+  //           };
+  //         }
           
-          return participant;
-        });
+  //         return participant;
+  //       });
         
-        // Show a message that existing data was loaded
-        setMessage({ 
-          text: 'Existing scoring data loaded successfully!', 
-          type: 'info' 
-        });
+  //       // Show a message that existing data was loaded
+  //       setMessage({ 
+  //         text: 'Existing scoring data loaded successfully!', 
+  //         type: 'info' 
+  //       });
         
-        // Clear message after 3 seconds
-        setTimeout(() => setMessage({ text: '', type: '' }), 3000);
-      }
+  //       // Clear message after 3 seconds
+  //       setTimeout(() => setMessage({ text: '', type: '' }), 3000);
+  //     }
       
-      setEventParticipants(processedParticipants);
+  //     setEventParticipants(processedParticipants);
       
-      // Update message if no participants found
-      if (processedParticipants.length === 0) {
-        setMessage({ 
-          text: 'No participants found for this event in the selected forane.', 
-          type: 'info' 
-        });
-      }
+  //     // Update message if no participants found
+  //     if (processedParticipants.length === 0) {
+  //       setMessage({ 
+  //         text: 'No participants found for this event in the selected forane.', 
+  //         type: 'info' 
+  //       });
+  //     }
       
-      setIsLoading(false);
-    } catch (error) {
-      console.error('Error fetching event participants:', error);
-      setMessage({ 
-        text: 'Failed to load event participants. Please try again.', 
-        type: 'error' 
-      });
-      setIsLoading(false);
-    }
-  };
+  //     setIsLoading(false);
+  //   } catch (error) {
+  //     console.error('Error fetching event participants:', error);
+  //     setMessage({ 
+  //       text: 'Failed to load event participants. Please try again.', 
+  //       type: 'error' 
+  //     });
+  //     setIsLoading(false);
+  //   }
+  // };
+const fetchEventParticipants = async () => {
+  if (!selectedForane || !selectedEvent) return;
 
+  try {
+    setIsLoading(true);
+
+    // Parallel fetch
+    const [scoringResult, regResult] = await Promise.allSettled([
+      axiosInstance.get(`/event-scoring/forane/${selectedForane}/event/${selectedEvent}`),
+      axiosInstance.get(`/registrations/forane/${selectedForane}/event/${selectedEvent}`)
+    ]);
+
+    // Process scoring
+    let existingScoring = null;
+    if (scoringResult.status === 'fulfilled') {
+      const sd = scoringResult.value.data;
+      if (sd?.success && sd.data.eventScoring) {
+        existingScoring = sd.data.eventScoring;
+        if (existingScoring.maxMarks) setMaxMarks(existingScoring.maxMarks);
+      }
+    }
+
+    // Process registrations
+    if (regResult.status !== 'fulfilled') {
+      throw new Error('Failed to fetch registrations');
+    }
+
+    const registrations = regResult.value.data.data.registrations;
+    const selectedEventData = events.find(e => e._id === selectedEvent);
+    const isGroupEvent = selectedEventData?.eventType === 'group';
+
+    let processedParticipants;
+
+    if (isGroupEvent) {
+      const parishMap = new Map();
+      for (const reg of registrations) {
+        const parishName = reg.parish?.name || 'Unknown Parish';
+        if (!parishMap.has(parishName)) {
+          parishMap.set(parishName, {
+            _id: reg._id,
+            name: parishName,
+            participantType: 'Group',
+            parish: parishName,
+            parishId: reg.parish?._id || null,
+            registrationNumber: reg.groupRegistrationNumber || '',
+            totalMarks: 0, grade: '', position: '',
+            gradePoints: 0, positionPoints: 0, totalPoints: 0
+          });
+        }
+      }
+      processedParticipants = [...parishMap.values()];
+    } else {
+      processedParticipants = registrations.map(reg => ({
+        _id: reg._id,
+        name: reg.name,
+        participantType: 'Individual',
+        parish: reg.parish?.name || 'Unknown Parish',
+        parishId: reg.parish?._id || null,
+        standard: reg.standard,
+        gender: reg.gender,
+        registrationNumber: reg.registrationNumber || '',
+        totalMarks: 0, grade: '', position: '',
+        gradePoints: 0, positionPoints: 0, totalPoints: 0
+      }));
+    }
+
+    // Merge existing scoring using a lookup map instead of nested .find()
+    if (existingScoring?.participants?.length) {
+      const scoringMap = new Map();
+      for (const p of existingScoring.participants) {
+        scoringMap.set(p.participantId, p);
+        if (isGroupEvent && p.parish) scoringMap.set(`parish:${p.parish}`, p);
+      }
+
+      processedParticipants = processedParticipants.map(participant => {
+        const existing = scoringMap.get(participant._id) ||
+          (isGroupEvent ? scoringMap.get(`parish:${participant.parish}`) : null);
+
+        return existing ? {
+          ...participant,
+          totalMarks: existing.totalMarks || 0,
+          grade: existing.grade || '',
+          position: existing.position || '',
+          gradePoints: existing.gradePoints || 0,
+          positionPoints: existing.positionPoints || 0,
+          totalPoints: existing.totalPoints || 0
+        } : participant;
+      });
+
+      setMessage({ text: 'Existing scoring data loaded successfully!', type: 'info' });
+      setTimeout(() => setMessage({ text: '', type: '' }), 3000);
+    }
+
+    setEventParticipants(processedParticipants);
+
+    if (processedParticipants.length === 0) {
+      setMessage({ text: 'No participants found for this event in the selected forane.', type: 'info' });
+    }
+
+    setIsLoading(false);
+  } catch (error) {
+    console.error('Error fetching event participants:', error);
+    setMessage({ text: 'Failed to load event participants. Please try again.', type: 'error' });
+    setIsLoading(false);
+  }
+};
   // Filtered events
   const filteredEvents = events.filter(event => 
     (!sectionFilter || event.section === sectionFilter) &&
