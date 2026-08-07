@@ -146,49 +146,82 @@ const EventScoringPage = () => {
     }
   };
 
-  const fetchEvents = async () => {
-    if (!selectedForane) return;
+  // const fetchEvents = async () => {
+  //   if (!selectedForane) return;
   
-    try {
-      setIsLoading(true);
-      // Fetch On Stage events
-      const onStageResponse = await axiosInstance.get(`/events/stage/On Stage`);
-      const offStageResponse = await axiosInstance.get(`/events/stage/Off Stage`);
+  //   try {
+  //     setIsLoading(true);
+  //     // Fetch On Stage events
+  //     const onStageResponse = await axiosInstance.get(`/events/stage/On Stage`);
+  //     const offStageResponse = await axiosInstance.get(`/events/stage/Off Stage`);
       
-      // Combine On Stage and Off Stage events
-      const allEvents = [
-        ...(onStageResponse.data.data?.events || []),
-        ...(offStageResponse.data.data?.events || [])
-      ];
+  //     // Combine On Stage and Off Stage events
+  //     const allEvents = [
+  //       ...(onStageResponse.data.data?.events || []),
+  //       ...(offStageResponse.data.data?.events || [])
+  //     ];
       
-      setEvents(allEvents);
+  //     setEvents(allEvents);
       
-      // Fetch all scored events for this forane
-      try {
-        const scoredEventsResponse = await axiosInstance.get(`/event-scoring/forane/${selectedForane}`);
-        if (scoredEventsResponse.data && scoredEventsResponse.data.success) {
-          // Extract just the event IDs that have scores
-          const eventIdsWithScores = scoredEventsResponse.data.data.eventScorings.map(
-            scoring => scoring.eventId._id || scoring.eventId
-          );
-          setScoredEvents(eventIdsWithScores);
-        }
-      } catch (error) {
-        console.log('Error fetching scored events:', error);
-        // If there's an error, just assume no events are scored
-        setScoredEvents([]);
-      }
+  //     // Fetch all scored events for this forane
+  //     try {
+  //       const scoredEventsResponse = await axiosInstance.get(`/event-scoring/forane/${selectedForane}`);
+  //       if (scoredEventsResponse.data && scoredEventsResponse.data.success) {
+  //         // Extract just the event IDs that have scores
+  //         const eventIdsWithScores = scoredEventsResponse.data.data.eventScorings.map(
+  //           scoring => scoring.eventId._id || scoring.eventId
+  //         );
+  //         setScoredEvents(eventIdsWithScores);
+  //       }
+  //     } catch (error) {
+  //       console.log('Error fetching scored events:', error);
+  //       // If there's an error, just assume no events are scored
+  //       setScoredEvents([]);
+  //     }
       
-      setIsLoading(false);
-    } catch (error) {
-      console.error('Error fetching events:', error);
-      setMessage({ 
-        text: 'Failed to load events. Please try again.', 
-        type: 'error' 
-      });
-      setIsLoading(false);
+  //     setIsLoading(false);
+  //   } catch (error) {
+  //     console.error('Error fetching events:', error);
+  //     setMessage({ 
+  //       text: 'Failed to load events. Please try again.', 
+  //       type: 'error' 
+  //     });
+  //     setIsLoading(false);
+  //   }
+  // };
+  const fetchEvents = async () => {
+  if (!selectedForane) return;
+  try {
+    setIsLoading(true);
+    
+    const [onStageResponse, offStageResponse, scoredEventsResponse] = await Promise.allSettled([
+      axiosInstance.get(`/events/stage/On Stage`),
+      axiosInstance.get(`/events/stage/Off Stage`),
+      axiosInstance.get(`/event-scoring/forane/${selectedForane}`)
+    ]);
+
+    const allEvents = [
+      ...(onStageResponse.status === 'fulfilled' ? onStageResponse.value.data.data?.events || [] : []),
+      ...(offStageResponse.status === 'fulfilled' ? offStageResponse.value.data.data?.events || [] : [])
+    ];
+    setEvents(allEvents);
+
+    if (scoredEventsResponse.status === 'fulfilled' && scoredEventsResponse.value.data?.success) {
+      const ids = scoredEventsResponse.value.data.data.eventScorings.map(
+        s => s.eventId._id || s.eventId
+      );
+      setScoredEvents(ids);
+    } else {
+      setScoredEvents([]);
     }
-  };
+
+    setIsLoading(false);
+  } catch (error) {
+    console.error('Error fetching events:', error);
+    setMessage({ text: 'Failed to load events.', type: 'error' });
+    setIsLoading(false);
+  }
+};
   const fetchEventParticipants = async () => {
     if (!selectedForane || !selectedEvent) return;
   
