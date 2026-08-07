@@ -5,9 +5,9 @@ import {
   CircularProgress, Chip, Button, IconButton, TextField, InputAdornment, Paper, Card
 } from '@mui/material';
 import { createTheme, ThemeProvider } from '@mui/material/styles';
-import { Award, Users, Target, BarChart3, RefreshCw, Search, Trophy, MapPin } from 'lucide-react';
+import { Award, Users, Target, BarChart3, RefreshCw, Trophy, MapPin } from 'lucide-react';
 import axiosInstance from "../axiosConfig";
-
+import { Layers, Music, Search, Filter, Grid3x3 } from 'lucide-react';
 const theme = createTheme({
   palette: {
     primary: { main: '#2563EB', light: '#3B82F6', dark: '#1E40AF' },
@@ -244,27 +244,119 @@ const ResultsDashboardPro = () => {
 
   const card = { background: '#fff', border: '1px solid #E2E8F0', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' };
   const tableStyles = { '& th': { color: '#64748B', fontWeight: 700, borderBottom: '2px solid #E2E8F0', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px', py: 1.5, background: '#F8FAFC' }, '& td': { color: '#1E293B', borderBottom: '1px solid #F1F5F9', py: 1.3 } };
+const filterSelectSx = (color = '#2563EB') => ({
+  minWidth: 160,
+  '& .MuiOutlinedInput-root': {
+    borderRadius: '12px',
+    background: '#fff',
+    fontSize: '13px',
+    fontWeight: 600,
+    '& fieldset': { borderColor: `${color}30`, borderWidth: '1.5px' },
+    '&:hover fieldset': { borderColor: `${color}60` },
+    '&.Mui-focused fieldset': { borderColor: color, borderWidth: '2px' },
+  },
+  '& .MuiInputLabel-root': { fontSize: '13px', fontWeight: 600, color: '#94A3B8' },
+  '& .MuiInputLabel-root.Mui-focused': { color },
+  '& .MuiSelect-icon': { color: `${color}80` },
+});
 
-  const FilterBar = ({ showSearch = false, showDivision = true, showStage = false, showVenue = false }) => (
-    <Box display="flex" gap={1.5} flexWrap="wrap" alignItems="center" sx={{ mb: 2.5 }}>
-      <FormControl size="small" sx={{ minWidth: 160 }}><InputLabel>Section</InputLabel><Select value={selectedSection} label="Section" onChange={e => { setSelectedSection(e.target.value); setSelectedEvent(''); }}><MenuItem value="">All Sections</MenuItem>{Object.keys(SECTION_CONFIG).map(s => <MenuItem key={s} value={s}>{s}</MenuItem>)}</Select></FormControl>
-      {showStage && (
-        <FormControl size="small" sx={{ minWidth: 160 }}><InputLabel>Stage</InputLabel><Select value={selectedStage} label="Stage" onChange={e => setSelectedStage(e.target.value)}><MenuItem value="">All Stages</MenuItem>{availableStages.map(s => <MenuItem key={s} value={s}>{s}</MenuItem>)}</Select></FormControl>
-      )}
-      {showVenue && availableVenues.length > 0 && (
-        <FormControl size="small" sx={{ minWidth: 200 }}><InputLabel>Venue</InputLabel><Select value={selectedVenue} label="Venue" onChange={e => setSelectedVenue(e.target.value)}><MenuItem value="">All Venues</MenuItem>{availableVenues.map(v => <MenuItem key={v.id} value={v.id}>{v.name}</MenuItem>)}</Select></FormControl>
-      )}
-      {!showStage && !showVenue && (
-        <FormControl size="small" sx={{ minWidth: 200 }}><InputLabel>Event</InputLabel><Select value={selectedEvent} label="Event" onChange={e => setSelectedEvent(e.target.value)}><MenuItem value="">All Events</MenuItem>{filteredUniqueEvents.map(ev => <MenuItem key={ev} value={ev}>{ev}</MenuItem>)}</Select></FormControl>
-      )}
-      {showDivision && !showStage && !showVenue && (<FormControl size="small" sx={{ minWidth: 160 }}><InputLabel>Division</InputLabel><Select value={selectedDivision} label="Division" onChange={e => setSelectedDivision(e.target.value)}><MenuItem value="">All Divisions</MenuItem>{DIVISION_CONFIG.map(d => <MenuItem key={d.key} value={d.key}>{d.label}</MenuItem>)}</Select></FormControl>)}
-      {showSearch && (<TextField size="small" placeholder="Search..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} sx={{ minWidth: 200 }} InputProps={{ startAdornment: <InputAdornment position="start"><Search size={16} color="#94A3B8" /></InputAdornment> }} />)}
-      {(selectedSection || selectedEvent || searchQuery || selectedDivision || selectedStage || selectedVenue) && (<Button size="small" onClick={resetFilters} sx={{ textTransform: 'none', color: '#64748B' }}>Clear</Button>)}
-      <Box sx={{ ml: 'auto', display: 'flex', gap: 1 }}>
-        <IconButton onClick={fetchAllData} size="small" sx={{ border: '1px solid #E2E8F0', borderRadius: 2 }}><RefreshCw size={16} /></IconButton>
-      </Box>
+const FilterBar = ({ showSearch = false, showDivision = true, showStage = false, showVenue = false }) => (
+  <Box display="flex" gap={1.5} flexWrap="wrap" alignItems="center" sx={{ mb: 2.5, p: 2, borderRadius: 3, background: '#F8FAFC', border: '1px solid #E2E8F0' }}>
+    <FormControl size="small" sx={filterSelectSx('#2563EB')}>
+      <InputLabel><Box display="flex" alignItems="center" gap={0.5}><Layers size={14} /> Section</Box></InputLabel>
+      <Select value={selectedSection} label="⬜ Section" onChange={e => { setSelectedSection(e.target.value); setSelectedEvent(''); }}>
+        <MenuItem value="">All Sections</MenuItem>
+        {Object.keys(SECTION_CONFIG).map(s => <MenuItem key={s} value={s}>{s}</MenuItem>)}
+      </Select>
+    </FormControl>
+
+    {showStage && (
+      <FormControl size="small" sx={filterSelectSx('#10B981')}>
+        <InputLabel><Box display="flex" alignItems="center" gap={0.5}><Music size={14} /> Stage</Box></InputLabel>
+        <Select value={selectedStage} label="⬜ Stage" onChange={e => setSelectedStage(e.target.value)}>
+          <MenuItem value="">All Stages</MenuItem>
+          {availableStages.map(s => <MenuItem key={s} value={s}>{s}</MenuItem>)}
+        </Select>
+      </FormControl>
+    )}
+
+    {showVenue && availableVenues.length > 0 && (
+      <FormControl size="small" sx={filterSelectSx('#6366F1')}>
+        <InputLabel><Box display="flex" alignItems="center" gap={0.5}><MapPin size={14} /> Venue</Box></InputLabel>
+        <Select value={selectedVenue} label="⬜ Venue" onChange={e => setSelectedVenue(e.target.value)}>
+          <MenuItem value="">All Venues</MenuItem>
+          {availableVenues.map(v => <MenuItem key={v.id} value={v.id}>{v.name}</MenuItem>)}
+        </Select>
+      </FormControl>
+    )}
+
+    {!showStage && !showVenue && (
+      <FormControl size="small" sx={filterSelectSx('#D97706')}>
+        <InputLabel><Box display="flex" alignItems="center" gap={0.5}><Grid3x3 size={14} /> Event</Box></InputLabel>
+        <Select value={selectedEvent} label="⬜ Event" onChange={e => setSelectedEvent(e.target.value)}>
+          <MenuItem value="">All Events</MenuItem>
+          {filteredUniqueEvents.map(ev => <MenuItem key={ev} value={ev}>{ev}</MenuItem>)}
+        </Select>
+      </FormControl>
+    )}
+
+    {showDivision && !showStage && !showVenue && (
+      <FormControl size="small" sx={filterSelectSx('#EC4899')}>
+        <InputLabel><Box display="flex" alignItems="center" gap={0.5}><Filter size={14} /> Division</Box></InputLabel>
+        <Select value={selectedDivision} label="⬜ Division" onChange={e => setSelectedDivision(e.target.value)}>
+          <MenuItem value="">All Divisions</MenuItem>
+          {DIVISION_CONFIG.map(d => <MenuItem key={d.key} value={d.key}>{d.label}</MenuItem>)}
+        </Select>
+      </FormControl>
+    )}
+
+    {showSearch && (
+      <TextField size="small" placeholder="Search..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
+        sx={{
+          minWidth: 200,
+          '& .MuiOutlinedInput-root': {
+            borderRadius: '12px', background: '#fff', fontSize: '13px',
+            '& fieldset': { borderColor: '#E2E8F030', borderWidth: '1.5px' },
+            '&:hover fieldset': { borderColor: '#94A3B8' },
+            '&.Mui-focused fieldset': { borderColor: '#2563EB', borderWidth: '2px' },
+          }
+        }}
+        InputProps={{ startAdornment: <InputAdornment position="start"><Search size={16} color="#94A3B8" /></InputAdornment> }}
+      />
+    )}
+
+    {(selectedSection || selectedEvent || searchQuery || selectedDivision || selectedStage || selectedVenue) && (
+      <Button size="small" onClick={resetFilters}
+        sx={{ textTransform: 'none', color: '#EF4444', fontWeight: 600, fontSize: '12px', borderRadius: '10px', border: '1.5px solid #EF444430', px: 1.5, '&:hover': { bgcolor: '#FEF2F2', borderColor: '#EF4444' } }}>
+        ✕ Clear
+      </Button>
+    )}
+
+    <Box sx={{ ml: 'auto' }}>
+      <IconButton onClick={fetchAllData} size="small" sx={{ border: '1.5px solid #E2E8F0', borderRadius: '10px', p: 1, '&:hover': { bgcolor: '#EFF6FF', borderColor: '#2563EB' } }}><RefreshCw size={16} /></IconButton>
     </Box>
-  );
+  </Box>
+ );
+//   const FilterBar = ({ showSearch = false, showDivision = true, showStage = false, showVenue = false }) => (
+//     <Box display="flex" gap={1.5} flexWrap="wrap" alignItems="center" sx={{ mb: 2.5 }}>
+//       <FormControl size="small" sx={{ minWidth: 160 }}><InputLabel>Section</InputLabel><Select value={selectedSection} label="Section" onChange={e => { setSelectedSection(e.target.value); setSelectedEvent(''); }}><MenuItem value="">All Sections</MenuItem>{Object.keys(SECTION_CONFIG).map(s => <MenuItem key={s} value={s}>{s}</MenuItem>)}</Select></FormControl>
+//       {showStage && (
+//         <FormControl size="small" sx={{ minWidth: 160 }}><InputLabel>Stage</InputLabel><Select value={selectedStage} label="Stage" onChange={e => setSelectedStage(e.target.value)}><MenuItem value="">All Stages</MenuItem>{availableStages.map(s => <MenuItem key={s} value={s}>{s}</MenuItem>)}</Select></FormControl>
+//       )}
+//       {showVenue && availableVenues.length > 0 && (
+//         <FormControl size="small" sx={{ minWidth: 200 }}><InputLabel>Venue</InputLabel><Select value={selectedVenue} label="Venue" onChange={e => setSelectedVenue(e.target.value)}><MenuItem value="">All Venues</MenuItem>{availableVenues.map(v => <MenuItem key={v.id} value={v.id}>{v.name}</MenuItem>)}</Select></FormControl>
+//       )}
+//       {!showStage && !showVenue && (
+//         <FormControl size="small" sx={{ minWidth: 200 }}><InputLabel>Event</InputLabel><Select value={selectedEvent} label="Event" onChange={e => setSelectedEvent(e.target.value)}><MenuItem value="">All Events</MenuItem>{filteredUniqueEvents.map(ev => <MenuItem key={ev} value={ev}>{ev}</MenuItem>)}</Select></FormControl>
+//       )}
+//       {showDivision && !showStage && !showVenue && (<FormControl size="small" sx={{ minWidth: 160 }}><InputLabel>Division</InputLabel><Select value={selectedDivision} label="Division" onChange={e => setSelectedDivision(e.target.value)}><MenuItem value="">All Divisions</MenuItem>{DIVISION_CONFIG.map(d => <MenuItem key={d.key} value={d.key}>{d.label}</MenuItem>)}</Select></FormControl>)}
+//       {showSearch && (<TextField size="small" placeholder="Search..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} sx={{ minWidth: 200 }} InputProps={{ startAdornment: <InputAdornment position="start"><Search size={16} color="#94A3B8" /></InputAdornment> }} />)}
+//       {(selectedSection || selectedEvent || searchQuery || selectedDivision || selectedStage || selectedVenue) && (<Button size="small" onClick={resetFilters} sx={{ textTransform: 'none', color: '#64748B' }}>Clear</Button>)}
+//       <Box sx={{ ml: 'auto', display: 'flex', gap: 1 }}>
+//         <IconButton onClick={fetchAllData} size="small" sx={{ border: '1px solid #E2E8F0', borderRadius: 2 }}><RefreshCw size={16} /></IconButton>
+//       </Box>
+//     </Box>
+//   );
 
   const DivisionBlock = ({ divKey, standings }) => {
     const conf = getDivConfig(divKey); const dMax = standings[0]?.totalPoints || 1; const top3 = standings.slice(0, 3);
