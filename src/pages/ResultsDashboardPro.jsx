@@ -176,7 +176,7 @@ const fetchAllData = async () => {
       {(selectedSection || selectedEvent || searchQuery || selectedDivision) && (<Button size="small" onClick={resetFilters} sx={{ textTransform: 'none', color: '#64748B' }}>Clear</Button>)}
       <Box sx={{ ml: 'auto', display: 'flex', gap: 1 }}>
         <IconButton onClick={fetchAllData} size="small" sx={{ border: '1px solid #E2E8F0', borderRadius: 2 }}><RefreshCw size={16} /></IconButton>
-        <Button size="small" variant="outlined" onClick={() => window.print()} sx={{ textTransform: 'none', borderColor: '#E2E8F0', color: '#64748B', borderRadius: 2 }}>Print</Button>
+        {/* <Button size="small" variant="outlined" onClick={() => window.print()} sx={{ textTransform: 'none', borderColor: '#E2E8F0', color: '#64748B', borderRadius: 2 }}>Print</Button> */}
       </Box>
     </Box>
   );
