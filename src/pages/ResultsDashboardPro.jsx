@@ -59,22 +59,17 @@ const ResultsDashboardPro = () => {
   const FORANE_ID = '673799a3cb9b4aa181e53fa2';
   useEffect(() => { fetchAllData(); }, []);
 
-  const fetchAllData = async () => {
-    setIsLoading(true);
-    try {
-      const [scoringsRes, eventsOnRes, eventsOffRes, parishesRes] = await Promise.all([
-        axiosInstance.get(`/event-scoring/forane/${FORANE_ID}`),
-        axiosInstance.get('/events/stage/On Stage').catch(() => ({ data: { data: { events: [] } } })),
-        axiosInstance.get('/events/stage/Off Stage').catch(() => ({ data: { data: { events: [] } } })),
-        axiosInstance.get('/parish')
-      ]);
-      setScorings(scoringsRes.data?.data?.eventScorings || []);
-      setEvents([...(eventsOnRes.data?.data?.events || []), ...(eventsOffRes.data?.data?.events || [])]);
-      setParishes((parishesRes.data || []).filter(p => p.forane === FORANE_ID || p.forane?._id === FORANE_ID));
-    } catch (e) { console.error(e); }
-    finally { setIsLoading(false); }
-  };
-
+const fetchAllData = async () => {
+  setIsLoading(true);
+  try {
+    const res = await axiosInstance.get(`/event-scoring/event-scoring/forane/${FORANE_ID}/dashboard`);
+    const { eventScorings, events: allEvents, parishes: allParishes } = res.data.data;
+    setScorings(eventScorings || []);
+    setEvents(allEvents || []);
+    setParishes(allParishes || []);
+  } catch (e) { console.error(e); }
+  finally { setIsLoading(false); }
+};
   const parishDivisionMap = useMemo(() => { const m = {}; parishes.forEach(p => { m[p.name] = getParishDivision(p.phone); }); return m; }, [parishes]);
   const parishFamilyMap = useMemo(() => { const m = {}; parishes.forEach(p => { m[p.name] = parseInt(p.phone) || 0; }); return m; }, [parishes]);
 
@@ -156,7 +151,7 @@ const ResultsDashboardPro = () => {
 
   const views = [
     { key: 'overview', label: '📊 Overview' }, { key: 'standings', label: '🏆 Standings' }, { key: 'divisions', label: '🏅 Divisions' },
-    { key: 'events', label: '🎭 Events' }, { key: 'sections', label: '📋 Sections' }, { key: 'topscorers', label: '⭐ Top Scorers' }
+    { key: 'events', label: '🎭 Events' }, { key: 'sections', label: '📋 Sections' }
   ];
 
   const CustomTooltip = ({ active, payload, label }) => {
@@ -432,7 +427,7 @@ const ResultsDashboardPro = () => {
               </Box>)}
 
               {/* ===== TOP SCORERS ===== */}
-              {activeView === 'topscorers' && (<Box><FilterBar showSearch />
+              {/* {activeView === 'topscorers' && (<Box><FilterBar showSearch />
                 <Paper sx={{ borderRadius: 3, border: '1px solid #E2E8F0', overflow: 'hidden' }}>
                   <Box sx={{ p: 2.5, borderBottom: '1px solid #E2E8F0' }}><Typography sx={{ fontWeight: 800, fontSize: '17px' }}>Top Individual Scorers</Typography></Box>
                   <TableContainer><Table size="small" sx={tableStyles}><TableHead><TableRow>
@@ -450,7 +445,7 @@ const ResultsDashboardPro = () => {
                     {topScorers.length === 0 && <TableRow><TableCell colSpan={8} align="center" sx={{ py: 5, color: '#CBD5E1' }}>No scores available</TableCell></TableRow>}
                   </TableBody></Table></TableContainer>
                 </Paper>
-              </Box>)}
+              </Box>)} */}
             </Box>
           )}
         </Container>
