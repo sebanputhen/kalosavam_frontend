@@ -164,10 +164,10 @@ const ParishLoginPage = () => {
               Sign In
             </Button>
 
-            <Button href="/login" size="small"
+            {/* <Button href="/login" size="small"
               sx={{ textTransform: 'none', color: '#94A3B8', fontSize: '13px' }}>
               Admin Login →
-            </Button>
+            </Button> */}
           </Box>
         </StyledCard>
       </Box>

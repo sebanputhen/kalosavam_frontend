@@ -113,7 +113,7 @@ function App() {
             <Route exact path="/resultsDashboardPro" component={ResultsDashboardPro} />
 
             {/* Auth routes */}
-            <Route exact path="/login">
+            <Route exact path="/centerflogin">
               {isAuthenticated() ? <Redirect to="/home" /> : 
                isParishUser() ? <Redirect to="/parish/registration" /> : <LoginPage />}
             </Route>
@@ -178,7 +178,7 @@ function App() {
                 </Switch>
               </Main>
             ) : (
-              <Redirect to="/login" />
+              <Redirect to="/centerflogin" />
             )}
           </Switch>
           <SpeedInsights />

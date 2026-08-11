@@ -1,42 +1,30 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect,useMemo } from 'react';
 import {
-  Box,
-  Container,
-  Typography,
-  Grid,
-  Paper,
-  Select,
-  MenuItem,
-  FormControl,
-  InputLabel,
-  Button,
-  TableContainer,
-  Table,
-  TableHead,
-  TableBody,
-  TableRow,
-  TableCell,
-  CircularProgress
+  Box, Container, Typography, Grid, Select, MenuItem, FormControl, InputLabel,
+  Button, TableContainer, Table, TableHead, TableBody, TableRow, TableCell,
+  CircularProgress, Card, CardContent, Paper, Chip, Alert
 } from '@mui/material';
-import { createTheme, ThemeProvider } from '@mui/material/styles';
+import { createTheme, ThemeProvider, styled } from '@mui/material/styles';
 import axiosInstance from "../axiosConfig";
 import { getParishId } from '../utils/parishAuth';
 import { useFinancialYear } from './FinancialYearContext';
+import { Printer, Users, Calendar, Award, FileText, Layers } from 'lucide-react';
 
-// Theme configuration
 const theme = createTheme({
-  typography: {
-    fontFamily: 'Arial, sans-serif',
+  palette: {
+    mode: 'light',
+    primary: { main: '#2563EB', light: '#3B82F6', dark: '#1E40AF' },
+    secondary: { main: '#10B981', light: '#34D399', dark: '#047857' },
+    info: { main: '#6366F1', light: '#818CF8', dark: '#4F46E5' },
+    warning: { main: '#F59E0B', light: '#FBBF24', dark: '#D97706' },
+    background: { default: '#F0F4F8', paper: '#FFFFFF' }
   },
+  typography: { fontFamily: '"Inter", "Segoe UI", "Roboto", sans-serif' },
+  shape: { borderRadius: 12 },
   components: {
     MuiPaper: {
       styleOverrides: {
-        root: {
-          '@media print': {
-            boxShadow: 'none',
-            border: 'none',
-          }
-        }
+        root: { '@media print': { boxShadow: 'none', border: 'none' } }
       }
     }
   }
@@ -44,22 +32,21 @@ const theme = createTheme({
 
 const printStyles = `
   @media print {
-    @page {
-      size: A4 landscape;
-      margin: 5mm;
+    @page { size: A4 landscape; margin: 5mm; }
+
+    /* Hide EVERYTHING first */
+    body * {
+      visibility: hidden;
     }
-    .no-print {
-      display: none !important;
+
+    /* Then show ONLY the print area and its children */
+    .print-area,
+    .print-area * {
+      visibility: visible !important;
     }
-    nav, header, footer, aside,
-    .MuiDrawer-root, .MuiAppBar-root,
-    .sidebar, .navbar, .topbar,
-    [class*="Sidebar"], [class*="Navbar"], [class*="AppBar"],
-    [class*="drawer"], [class*="header"] {
-      display: none !important;
-    }
+
     .print-area {
-      position: fixed !important;
+      position: absolute !important;
       left: 0 !important;
       top: 0 !important;
       width: 100% !important;
@@ -67,44 +54,76 @@ const printStyles = `
       padding: 5px !important;
       box-shadow: none !important;
       font-size: 10px !important;
+      border-radius: 0 !important;
+      border: none !important;
+      background: white !important;
     }
-    .print-area * {
-      visibility: visible !important;
-    }
-    .print-area table {
-      font-size: 9px !important;
-    }
-    .print-area td, .print-area th {
-      padding: 2px !important;
-      white-space: nowrap !important;
-    }
-    .print-area h4 {
-      font-size: 18px !important;
-      margin: 0 !important;
-    }
+
+    .no-print { display: none !important; }
+
+    .print-area table { font-size: 9px !important; }
+    .print-area td, .print-area th { padding: 2px !important; white-space: nowrap !important; }
+    .print-area h4 { font-size: 18px !important; margin: 0 !important; }
+
     .vertical-text {
-      writing-mode: vertical-rl;
-      text-orientation: mixed;
-      transform: rotate(180deg);
-      white-space: nowrap;
+      writing-mode: vertical-rl; text-orientation: mixed;
+      transform: rotate(180deg); white-space: nowrap;
+    }
+
+    .print-page-break {
+      page-break-before: always !important;
     }
   }
 `;
 
-// Configuration Constants
-const SECTION_CONFIG = {
-  'Dominic Savio': { 
-    label: 'Classes IV-VI',
-    section: 'Dominic Savio Section'
-  },
-  'Alphonsa': { 
-    label: 'Classes VII-IX',
-    section: 'Alphonsa Section'
-  },
-  'Saint Thomas': { 
-    label: 'Classes X-XII',
-    section: 'Saint Thomas  Section'
+// ====== STYLED COMPONENTS ======
+const DashboardContainer = styled(Box)({
+  minHeight: '100vh',
+  background: 'linear-gradient(135deg, #f0f4f8 0%, #d9e2ec 100%)',
+  paddingTop: 24, paddingBottom: 40,
+});
+
+const StyledCard = styled(Card)({
+  borderRadius: 16,
+  boxShadow: '0 1px 3px rgba(0,0,0,0.08), 0 8px 24px rgba(0,0,0,0.04)',
+  border: '1px solid rgba(0,0,0,0.06)',
+  transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+  '&:hover': {
+    transform: 'translateY(-2px)',
+    boxShadow: '0 4px 12px rgba(0,0,0,0.1), 0 12px 32px rgba(0,0,0,0.06)',
   }
+});
+
+const StyledCardContent = styled(CardContent)({ padding: '24px !important' });
+const StatWrapper = styled(Box)({ display: 'flex', justifyContent: 'space-between', alignItems: 'center' });
+const StatValue = styled(Typography)({ fontSize: '2rem', fontWeight: 700, lineHeight: 1.2, marginTop: 4, color: '#1a202c' });
+
+const IconBox = styled(Box)(({ color }) => ({
+  width: 52, height: 52, borderRadius: 14,
+  display: 'flex', alignItems: 'center', justifyContent: 'center',
+  background: `linear-gradient(135deg, ${color}22, ${color}11)`,
+  border: `1px solid ${color}33`, color: color,
+}));
+
+const ChartCard = styled(Card)({
+  borderRadius: 16,
+  boxShadow: '0 1px 3px rgba(0,0,0,0.08), 0 8px 24px rgba(0,0,0,0.04)',
+  border: '1px solid rgba(0,0,0,0.06)', padding: 24,
+});
+
+const PageHeader = styled(Box)({
+  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+  marginBottom: 32, flexWrap: 'wrap', gap: 16,
+});
+
+const SECTION_CONFIG = {
+  'Dominic Savio': { label: 'Classes IV-VI', section: 'Dominic Savio Section' },
+  'Alphonsa': { label: 'Classes VII-IX', section: 'Alphonsa Section' },
+  'Saint Thomas': { label: 'Classes X-XII', section: 'Saint Thomas Section' }
+};
+
+const SECTION_COLORS = {
+  'Dominic Savio': '#2563EB', 'Alphonsa': '#10B981', 'Saint Thomas': '#6366F1',
 };
 
 const EventRegistrationPrintPage = () => {
@@ -124,416 +143,417 @@ const EventRegistrationPrintPage = () => {
     const fetchParishes = async () => {
       try {
         const response = await axiosInstance.get("/parish");
-        const filtered = (response.data || []).filter(
+        setParishes((response.data || []).filter(
           (p) => p.forane === "673799a3cb9b4aa181e53fa2" || p.forane?._id === "673799a3cb9b4aa181e53fa2"
-        );
-        setParishes(filtered);
-      } catch (error) {
-        console.error("Error fetching parishes:", error);
-      }
+        ));
+      } catch (error) { console.error("Error fetching parishes:", error); }
     };
-
     fetchParishes();
   }, []);
-useEffect(() => {
-  const pid = getParishId();
-  if (pid) setSelectedParish(pid);
-}, []);
-  useEffect(() => {
-    const fetchSectionEvents = async () => {
-      if (!selectedSection) {
-        setAllSectionEvents([]);
-        return;
-      }
 
+  useEffect(() => {
+    const pid = getParishId();
+    if (pid) setSelectedParish(pid);
+  }, []);
+
+  useEffect(() => {
+    if (!selectedSection) { setAllSectionEvents([]); return; }
+    const fetchSectionEvents = async () => {
       try {
         const response = await axiosInstance.get(`/events/section/${encodeURIComponent(selectedSection)}`);
-        const events = response.data.data.events || [];
-        setAllSectionEvents(events.map(event => ({
-          id: event._id,
-          name: event.eventName
-        })));
-      } catch (error) {
-        console.error("Error fetching section events:", error);
-        setAllSectionEvents([]);
-      }
-    };
+        // setAllSectionEvents((response.data.data.events || []).map(e => ({ id: e._id, name: e.eventName })));
+        setAllSectionEvents((response.data.data.events || []).map(e => ({ 
+  id: e._id, name: e.eventName, category: e.category?.name || 'Uncategorized'
+})));
 
+      } catch (error) { console.error("Error fetching section events:", error); setAllSectionEvents([]); }
+    };
     fetchSectionEvents();
   }, [selectedSection]);
 
   useEffect(() => {
+    if (!selectedParish) return;
     const fetchParishDetails = async () => {
-      if (!selectedParish) return;
-
       try {
         const response = await axiosInstance.get(`/parish/${selectedParish}`);
         setParishDetails(response.data);
-      } catch (error) {
-        console.error("Error fetching parish details:", error);
-        setParishDetails(null);
-      }
+      } catch (error) { console.error("Error fetching parish details:", error); setParishDetails(null); }
     };
-
     fetchParishDetails();
   }, [selectedParish]);
 
   useEffect(() => {
+    if (!selectedParish) return;
     const fetchData = async () => {
-      if (!selectedParish) return;
-    
       try {
         setIsLoading(true);
-    
-        const encodedSection = selectedSection 
-          ? encodeURIComponent(selectedSection)
-          : 'all';
-        
-        const sectionApiPath = `/registrations/parish/${selectedParish}/sections/${encodedSection}`;
-        
-        const sectionResponse = await axiosInstance.get(sectionApiPath);
-        const sectionDetails = sectionResponse.data.data.sectionDetails;
-        setSectionDetails(sectionDetails);
-    
+        const encodedSection = selectedSection ? encodeURIComponent(selectedSection) : 'all';
+        const sectionResponse = await axiosInstance.get(`/registrations/parish/${selectedParish}/sections/${encodedSection}`);
+        setSectionDetails(sectionResponse.data.data.sectionDetails);
         const registrationsResponse = await axiosInstance.get(`/registrations/parish/${selectedParish}`);
         const registrations = registrationsResponse.data.data.registrations || [];
-    
-        const processedParticipants = processRegistrations(registrations);
-        setParticipants(processedParticipants);
-
-        const extractedEventColumns = extractEventColumns(registrations);
-        setEventColumns(extractedEventColumns);
-
-        setIsLoading(false);
-      } catch (error) {
-        console.error("Error fetching registration data:", error);
-        setIsLoading(false);
-      }
+        setParticipants(processRegistrations(registrations));
+        setEventColumns(extractEventColumns(registrations));
+      } catch (error) { console.error("Error fetching registration data:", error); }
+      finally { setIsLoading(false); }
     };
-
     fetchData();
   }, [selectedParish, selectedSection]);
 
-  const extractEventColumns = (registrations) => {
-    const eventColumnMap = registrations.reduce((acc, reg) => {
-      if (reg.event && reg.event.eventName) {
-        acc[reg.event.eventName] = reg.event;
-      }
-      return acc;
-    }, {});
-
-    return Object.values(eventColumnMap).map(event => ({
-      id: event._id,
-      name: event.eventName
-    }));
-  };
-
   useEffect(() => {
+    if (!selectedParish || !selectedSection) return;
     const fetchManagerData = async () => {
-      if (!selectedParish || !selectedSection) return;
-    
       try {
         const response = await axiosInstance.get(`/managers/parish/${selectedParish}/section/${selectedSection}`);
         const sectionData = response.data[0];
-        
-        if (sectionData && sectionData.managers && sectionData.managers.length > 0) {
-          setManagers(sectionData.managers);
-        } else {
-          setManagers([]);
-        }
-      } catch (error) {
-        console.error("Error fetching manager:", error);
-        setManagers([]);
-      }
+        setManagers(sectionData?.managers?.length > 0 ? sectionData.managers : []);
+      } catch (error) { console.error("Error fetching manager:", error); setManagers([]); }
     };
-
     fetchManagerData();
   }, [selectedParish, selectedSection]);
 
+  // const extractEventColumns = (registrations) => {
+  //   const map = {};
+  //   registrations.forEach(reg => {
+  //     if (!reg.event || typeof reg.event !== 'object' || !reg.event._id) return;
+  //     if (reg.event.eventName) map[reg.event.eventName] = reg.event;
+  //   });
+  //   return Object.values(map).map(e => ({ id: e._id, name: e.eventName }));
+  // };
+const extractEventColumns = (registrations) => {
+  const map = {};
+  registrations.forEach(reg => {
+    if (!reg.event || typeof reg.event !== 'object' || !reg.event._id) return;
+    if (reg.event.eventName) map[reg.event.eventName] = reg.event;
+  });
+return Object.values(map).map(e => ({ 
+  id: e._id, name: e.eventName, category: e.category?.name || 'Uncategorized'
+}));
+};
   const processRegistrations = (registrations) => {
-    const groupedParticipants = {};
-
-    registrations.forEach(reg => {
-      const participantKey = `${reg.name}|${reg.standard}|${reg.gender}|${new Date(reg.dob).toISOString().split('T')[0]}`;
-      
-      if (!groupedParticipants[participantKey]) {
-        groupedParticipants[participantKey] = {
-          name: reg.name,
-          standard: reg.standard,
-          gender: reg.gender,
-          dob: reg.dob,
-          section: reg.section,
-          events: []
-        };
-      }
-
-      groupedParticipants[participantKey].events.push({
-        eventId: reg.event._id,
-        eventName: reg.event.eventName
-      });
+  const grouped = {};
+  registrations.forEach(reg => {
+    if (!reg.event || typeof reg.event !== 'object' || !reg.event._id) return;
+    const key = `${reg.name}|${reg.standard}|${reg.gender}|${new Date(reg.dob).toISOString().split('T')[0]}`;
+    if (!grouped[key]) {
+      grouped[key] = { name: reg.name, standard: reg.standard, gender: reg.gender, dob: reg.dob, section: reg.section, events: [] };
+    }
+    grouped[key].events.push({ 
+      eventId: reg.event._id, 
+      eventName: reg.event.eventName,
+      category: reg.event.category?.name || 'Uncategorized'
     });
-
-    return Object.values(groupedParticipants)
-      .filter(participant => {
-        if (selectedSection && participant.section !== selectedSection) return false;
-        return true;
-      })
-      .sort((a, b) => a.name.localeCompare(b.name));
-  };
+  });
+  return Object.values(grouped)
+    .filter(p => !selectedSection || p.section === selectedSection)
+    .sort((a, b) => {
+      // Sort by first category, then by name within same category
+      const catA = a.events.map(e => e.category).sort()[0] || 'ZZZ';
+      const catB = b.events.map(e => e.category).sort()[0] || 'ZZZ';
+      if (catA !== catB) return catA.localeCompare(catB);
+      return a.name.localeCompare(b.name);
+    });
+};
 
   const getCurrentSectionText = () => {
-    if (!selectedSection) return 'സെന്റ് തോമസ്  വിഭാഗം';
-    return SECTION_CONFIG[selectedSection]?.section || 'സെന്റ് തോമസ്  വിഭാഗം';
+    if (!selectedSection) return '';
+    return SECTION_CONFIG[selectedSection]?.section || '';
   };
 
-  // Use allSectionEvents when section is selected, fallback to eventColumns
-  const displayEventColumns = allSectionEvents.length > 0 ? allSectionEvents : eventColumns;
+  // const displayEventColumns = allSectionEvents.length > 0 ? allSectionEvents : eventColumns;
+const displayEventColumns = (allSectionEvents.length > 0 ? allSectionEvents : eventColumns)
+  .sort((a, b) => (a.category || '').localeCompare(b.category || ''));
+  const sortedParticipants = useMemo(() => {
+  // Build event-to-category lookup from displayEventColumns
+  const eventCatMap = {};
+  displayEventColumns.forEach(e => {
+    eventCatMap[e.name] = e.category || 'ZZZ';
+  });
+
+  return [...participants].sort((a, b) => {
+    const catA = a.events.map(e => eventCatMap[e.eventName] || 'ZZZ').sort()[0] || 'ZZZ';
+    const catB = b.events.map(e => eventCatMap[e.eventName] || 'ZZZ').sort()[0] || 'ZZZ';
+    if (catA !== catB) return catA.localeCompare(catB);
+    return a.name.localeCompare(b.name);
+  });
+}, [participants, displayEventColumns]);
+  const maleCount = sortedParticipants.filter(p => p.gender === 'M').length;
+  const femaleCount = sortedParticipants.filter(p => p.gender === 'F').length;
+  const totalEvents = displayEventColumns.length;
+const displayCategoryColumns = useMemo(() => {
+  const catMap = {};
+  displayEventColumns.forEach(e => {
+    const cat = e.category || 'Uncategorized';
+    if (!catMap[cat]) catMap[cat] = { name: cat, eventNames: [] };
+    catMap[cat].eventNames.push(e.name);
+  });
+  return Object.values(catMap).sort((a, b) => a.name.localeCompare(b.name));
+}, [displayEventColumns]);
+// Add this after displayCategoryColumns useMemo:
+
+
+  const statisticsCards = [
+    { title: 'Participants', value: participants.length, color: '#2563EB', icon: <Users size={24} /> },
+    { title: 'Boys', value: maleCount, color: '#6366F1', icon: <Users size={24} /> },
+    { title: 'Girls', value: femaleCount, color: '#10B981', icon: <Users size={24} /> },
+    { title: 'Events', value: totalEvents, color: '#F59E0B', icon: <Calendar size={24} /> },
+  ];
+
+  const ROWS_PER_PAGE = 14;
+
+  const PrintHeader = () => (
+    <>
+      <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={3}>
+        <Box sx={{ flex: 1 }} />
+        <Box textAlign="center" sx={{ flex: 2 }}>
+          <Typography variant="h4" fontWeight="bold">ഫൊറോന കലോത്സവം {currentYear}</Typography>
+          <Typography variant="subtitle1" sx={{
+            display: 'inline-block', border: '2px solid black', borderRadius: '20px',
+            px: 3, py: 0.5, mt: 1, fontWeight: 'bold'
+          }}>
+            {getCurrentSectionText()}
+          </Typography>
+        </Box>
+        <Box sx={{ flex: 1, textAlign: 'left' }}>
+          <Typography variant="body2" fontWeight="bold" sx={{ whiteSpace: 'nowrap' }}>TEAM MANAGERS</Typography>
+          <Box sx={{ textAlign: 'left', display: 'inline-block' }}>
+            {managers.length > 0
+              ? managers.map((m, i) => (
+                  <Typography key={i} variant="body2" sx={{ lineHeight: 1.6 }}>
+                    {i + 1}) {m.name}<br />&nbsp;&nbsp;&nbsp;&nbsp;{m.contactNumber}
+                  </Typography>
+                ))
+              : <Typography variant="body2">-</Typography>}
+          </Box>
+        </Box>
+      </Box>
+      <Box display="flex" justifyContent="space-between" mb={2}>
+        <Typography variant="body2" sx={{ flex: 1, textAlign: 'left' }}>PARISH: {parishDetails?.name || '_______________'}</Typography>
+        <Typography variant="body2" sx={{ flex: 1, textAlign: 'center' }}>FORANE: PONKUNNAM</Typography>
+        <Typography variant="body2" sx={{ flex: 1, textAlign: 'right' }}></Typography>
+      </Box>
+    </>
+  );
+
+  // const PrintTableHeader = () => (
+  //   <TableHead>
+  //     <TableRow>
+  //       <TableCell sx={{ width: '30px', padding: '0' }}>
+  //         <div style={{ writingMode: 'vertical-rl', textOrientation: 'mixed', transform: 'rotate(180deg)', whiteSpace: 'nowrap', padding: '4px', height: '50px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>Sl No.</div>
+  //       </TableCell>
+  //       <TableCell sx={{ width: '30px', padding: '0' }}>
+  //         <div style={{ writingMode: 'vertical-rl', textOrientation: 'mixed', transform: 'rotate(180deg)', whiteSpace: 'nowrap', padding: '4px', height: '50px', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '60px' }}>Chess No.</div>
+  //       </TableCell>
+  //       <TableCell>Name & house Name in Sunday School Register</TableCell>
+  //       <TableCell>Class</TableCell>
+  //       <TableCell>Gender (M/F)</TableCell>
+  //       <TableCell>Dob</TableCell>
+  //       {displayEventColumns.map((event) => (
+  //         <TableCell key={event.id} sx={{ width: '50px', padding: '0' }}>
+  //           <div className="vertical-text" style={{ writingMode: 'vertical-rl', textOrientation: 'mixed', transform: 'rotate(180deg)', whiteSpace: 'nowrap', padding: '4px', height: '100px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{event.name}</div>
+  //         </TableCell>
+  //       ))}
+  //     </TableRow>
+  //   </TableHead>
+  // );
+const PrintTableHeader = () => (
+  <TableHead>
+    <TableRow>
+      <TableCell sx={{ width: '30px', padding: '0' }}>
+        <div style={{ writingMode: 'vertical-rl', textOrientation: 'mixed', transform: 'rotate(180deg)', whiteSpace: 'nowrap', padding: '4px', height: '50px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>Sl No.</div>
+      </TableCell>
+      <TableCell sx={{ width: '30px', padding: '0' }}>
+        <div style={{ writingMode: 'vertical-rl', textOrientation: 'mixed', transform: 'rotate(180deg)', whiteSpace: 'nowrap', padding: '4px', height: '50px', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '60px' }}>Chess No.</div>
+      </TableCell>
+      <TableCell>Name & house Name in Sunday School Register</TableCell>
+      <TableCell>Class</TableCell>
+      <TableCell>Gender (M/F)</TableCell>
+      <TableCell>Dob</TableCell>
+      {displayCategoryColumns.map((cat, idx) => (
+        <TableCell key={idx} sx={{ width: '50px', padding: '0' }}>
+          <div className="vertical-text" style={{ writingMode: 'vertical-rl', textOrientation: 'mixed', transform: 'rotate(180deg)', whiteSpace: 'nowrap', padding: '4px', height: '100px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{cat.name}</div>
+        </TableCell>
+      ))}
+    </TableRow>
+  </TableHead>
+);
+  const totalRows = Math.max(ROWS_PER_PAGE, sortedParticipants.length);
+  const totalPages = Math.ceil(totalRows / ROWS_PER_PAGE);
 
   return (
     <ThemeProvider theme={theme}>
       <style>{printStyles}</style>
-      <Container maxWidth="xl">
-        <Box sx={{ py: 4 }}>
-          <Grid container spacing={2} sx={{ mb: 3 }} className="no-print">
+      <DashboardContainer>
+        <Container maxWidth="xl">
+          <Grid container spacing={3} className="no-print">
+            <Grid item xs={12}>
+              <PageHeader>
+                <Box>
+                  <Typography variant="h4" sx={{ fontWeight: 700, color: '#1a202c', mb: 0.5 }}>Registration Print</Typography>
+                  <Typography variant="body2" sx={{ color: 'text.secondary' }}>Preview and print event registration forms</Typography>
+                </Box>
+                <Button variant="contained" startIcon={<Printer size={18} />} onClick={() => window.print()}
+                  disabled={!selectedParish || !selectedSection}
+                  sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 600, px: 3, boxShadow: '0 2px 8px rgba(37,99,235,0.3)' }}>
+                  Print Registration
+                </Button>
+              </PageHeader>
+            </Grid>
+
             {!getParishId() && (
-  <Grid item xs={12} md={4}>
-    <FormControl fullWidth>
-      <InputLabel>Select Parish</InputLabel>
-      <Select
-        value={selectedParish}
-        label="Select Parish"
-        onChange={(e) => setSelectedParish(e.target.value)}
-      >
-        {parishes.map((parish) => (
-          <MenuItem key={parish._id} value={parish._id}>
-            {parish.name}
-          </MenuItem>
-        ))}
-      </Select>
-    </FormControl>
-  </Grid>
-)}
-            <Grid item xs={12} md={4}>
-              <FormControl fullWidth>
-                <InputLabel>Filter by Section</InputLabel>
-                <Select
-                  value={selectedSection}
-                  label="Filter by Section"
-                  onChange={(e) => setSelectedSection(e.target.value)}
-                >
-                  <MenuItem value="">All Sections</MenuItem>
-                  {Object.keys(SECTION_CONFIG).map((section) => (
-                    <MenuItem key={section} value={section}>
-                      {section} ({SECTION_CONFIG[section].label})
-                    </MenuItem>
+              <Grid item xs={12} sm={6} md={4}>
+                <StyledCard><StyledCardContent>
+                  <FormControl fullWidth><InputLabel>Select Parish</InputLabel>
+                    <Select value={selectedParish} label="Select Parish" onChange={(e) => setSelectedParish(e.target.value)}>
+                      {parishes.map((p) => <MenuItem key={p._id} value={p._id}>{p.name}</MenuItem>)}
+                    </Select>
+                  </FormControl>
+                </StyledCardContent></StyledCard>
+              </Grid>
+            )}
+            <Grid item xs={12} sm={6} md={4}>
+              <StyledCard><StyledCardContent>
+                <FormControl fullWidth><InputLabel>Filter by Section</InputLabel>
+                  <Select value={selectedSection} label="Filter by Section" onChange={(e) => setSelectedSection(e.target.value)}>
+                    <MenuItem value="">All Sections</MenuItem>
+                    {Object.keys(SECTION_CONFIG).map((s) => <MenuItem key={s} value={s}>{s} ({SECTION_CONFIG[s].label})</MenuItem>)}
+                  </Select>
+                </FormControl>
+              </StyledCardContent></StyledCard>
+            </Grid>
+
+            {selectedParish && !isLoading && statisticsCards.map((stat, index) => (
+              <Grid item xs={6} sm={3} key={index}>
+                <StyledCard><StyledCardContent><StatWrapper><Box>
+                  <Typography variant="subtitle1" sx={{ color: 'text.secondary', fontSize: '0.875rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em' }}>{stat.title}</Typography>
+                  <StatValue>{stat.value}</StatValue>
+                </Box><IconBox color={stat.color}>{stat.icon}</IconBox></StatWrapper></StyledCardContent></StyledCard>
+              </Grid>
+            ))}
+
+            {selectedSection && managers.length > 0 && (
+              <Grid item xs={12} sm={6} md={4}>
+                <ChartCard sx={{ height: '100%' }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
+                    <IconBox color="#6366F1" sx={{ width: 40, height: 40, borderRadius: 10 }}><Award size={20} /></IconBox>
+                    <Typography variant="h6" sx={{ fontWeight: 600, color: '#1a202c' }}>Team Managers</Typography>
+                  </Box>
+                  {managers.map((manager, index) => (
+                    <Box key={index} sx={{ mb: 1.5, p: 1.5, borderRadius: 2, bgcolor: 'rgba(0,0,0,0.02)', border: '1px solid rgba(0,0,0,0.06)' }}>
+                      <Typography variant="body2" sx={{ fontWeight: 600 }}>{manager.name}</Typography>
+                      <Typography variant="caption" color="textSecondary">{manager.contactNumber}</Typography>
+                    </Box>
                   ))}
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid item xs={12} md={4}>
-              <Button 
-                variant="contained" 
-                color="primary" 
-                fullWidth 
-                sx={{ height: '100%' }}
-                onClick={() => window.print()}
-                disabled={!selectedParish || !selectedSection}
-              >
-                Print Registration
-              </Button>
-            </Grid>
+                </ChartCard>
+              </Grid>
+            )}
+
+            {selectedParish && !selectedSection && (
+              <>
+                <Grid item xs={12}>
+                  <Typography variant="h6" sx={{ fontWeight: 600, color: '#1a202c', mb: 1 }}>Select a section to print</Typography>
+                </Grid>
+                {Object.entries(SECTION_CONFIG).map(([section, config]) => {
+                  const sColor = SECTION_COLORS[section];
+                  const count = participants.filter(p => p.section === section).length;
+                  return (
+                    <Grid item xs={12} sm={4} key={section}>
+                      <StyledCard sx={{ cursor: 'pointer', '&:hover': { borderColor: sColor } }} onClick={() => setSelectedSection(section)}>
+                        <StyledCardContent><StatWrapper><Box>
+                          <Typography variant="subtitle1" sx={{ color: 'text.secondary', fontSize: '0.875rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em' }}>{section}</Typography>
+                          <StatValue>{count}</StatValue>
+                          <Typography variant="caption" color="textSecondary">{config.label}</Typography>
+                        </Box><IconBox color={sColor}><Layers size={24} /></IconBox></StatWrapper></StyledCardContent>
+                      </StyledCard>
+                    </Grid>
+                  );
+                })}
+              </>
+            )}
           </Grid>
 
+          {/* Print Preview */}
           {isLoading ? (
-            <Box display="flex" justifyContent="center" alignItems="center" height="50vh">
-              <CircularProgress />
-            </Box>
-          ) : selectedParish ? (
-            <Paper elevation={3} sx={{ p: 3 }} className="print-area">
-              {/* Header with title and managers side by side */}
-              <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={3}>
-                {/* Left spacer */}
-                <Box sx={{ flex: 1 }} />
-                
-                {/* Center - Title */}
-                <Box textAlign="center" sx={{ flex: 2 }}>
-                  <Typography variant="h4" fontWeight="bold">
-                    ഫൊറോന കലോത്സവം {currentYear}
-                  </Typography>
-                  <Typography 
-                    variant="subtitle1" 
-                    sx={{ 
-                      display: 'inline-block',
-                      border: '2px solid black',
-                      borderRadius: '20px',
-                      px: 3,
-                      py: 0.5,
-                      mt: 1,
-                      fontWeight: 'bold'
-                    }}
-                  >
-                    {getCurrentSectionText()}
-                  </Typography>
-                </Box>
-
-                {/* Right - Team Managers */}
-                <Box sx={{ flex: 1, textAlign: 'left' }}>
-                  <Typography variant="body2" fontWeight="bold" sx={{ whiteSpace: 'nowrap' }}>
-                    TEAM MANAGERS
-                  </Typography>
-                  <Box sx={{ textAlign: 'left', display: 'inline-block' }}>
-                    {managers.length > 0 
-                      ? managers.map((manager, index) => (
-                          <Typography key={index} variant="body2" sx={{ lineHeight: 1.6 }}>
-                            {index + 1}) {manager.name}<br />
-                            &nbsp;&nbsp;&nbsp;&nbsp;{manager.contactNumber}
-                          </Typography>
-                        ))
-                      : <Typography variant="body2">-</Typography>
-                    }
-                  </Box>
-                </Box>
-              </Box>
-              
-              {/* Parish and Forane Details */}
-              <Box display="flex" justifyContent="space-between" mb={2}>
-                <Typography variant="body2" sx={{ flex: 1, textAlign: 'left' }}>
-                  PARISH: {parishDetails?.name || '_______________'}
-                </Typography>
-                <Typography variant="body2" sx={{ flex: 1, textAlign: 'center' }}>
-                  FORANE: PONKUNNAM
-                </Typography>
-                <Typography variant="body2" sx={{ flex: 1, textAlign: 'right' }}>
-                
-                </Typography>
+            <Box sx={{ display: 'flex', justifyContent: 'center', p: 6 }} className="no-print"><CircularProgress /></Box>
+          ) : selectedParish && selectedSection ? (
+            <>
+              <Box className="no-print" sx={{ mt: 3, mb: 2 }}>
+                <Typography variant="h6" sx={{ fontWeight: 600, color: '#1a202c' }}>Print Preview</Typography>
               </Box>
 
-              <TableContainer>
-                <Table sx={{ 
-                  minWidth: 650, 
-                  border: '1px solid black',
-                  '& th, & td': { 
-                    border: '1px solid black', 
-                    padding: '4px', 
-                    textAlign: 'center' 
-                  }
-                }}>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell sx={{ width: '30px', padding: '0' }}>
-                        <div style={{ 
-                          writingMode: 'vertical-rl', 
-                          textOrientation: 'mixed',
-                          transform: 'rotate(180deg)',
-                          whiteSpace: 'nowrap',
-                          padding: '4px',
-                          height: '50px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center'
+              <Paper elevation={3} sx={{ p: 3, borderRadius: { xs: 0, md: 3 } }} className="print-area">
+                {Array.from({ length: totalPages }).map((_, pageIdx) => {
+                  const startRow = pageIdx * ROWS_PER_PAGE;
+                  const isLastPage = pageIdx === totalPages - 1;
+
+                  return (
+                    <Box key={pageIdx} className={pageIdx > 0 ? 'print-page-break' : ''}>
+                      <PrintHeader />
+
+                      <Box className="no-print" sx={{ mb: 1 }}>
+                        <Chip label={`Page ${pageIdx + 1} of ${totalPages}`} size="small" sx={{ bgcolor: '#EFF6FF', color: '#2563EB', fontWeight: 600 }} />
+                      </Box>
+
+                      <TableContainer>
+                        <Table sx={{
+                          minWidth: 650, border: '1px solid black',
+                          '& th, & td': { border: '1px solid black', padding: '4px', textAlign: 'center' }
                         }}>
-                          Sl No.
-                        </div>
-                      </TableCell>
-                      <TableCell sx={{ width: '30px', padding: '0' }}>
-                        <div style={{ 
-                          writingMode: 'vertical-rl', 
-                          textOrientation: 'mixed',
-                          transform: 'rotate(180deg)',
-                          whiteSpace: 'nowrap',
-                          padding: '4px',
-                          height: '50px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          width: '60px'
-                        }}>
-                          Chess No.
-                        </div>
-                      </TableCell>
-                      <TableCell>Name & house Name in Sunday School Register</TableCell>
-                      <TableCell>Class</TableCell>
-                      <TableCell>Gender (M/F)</TableCell>
-                      <TableCell>Dob</TableCell>
-                      {displayEventColumns.map((event, index) => (
-                        <TableCell key={event.id} sx={{ width: '50px', padding: '0' }}>
-                          <div className="vertical-text" style={{ 
-                            writingMode: 'vertical-rl', 
-                            textOrientation: 'mixed',
-                            transform: 'rotate(180deg)',
-                            whiteSpace: 'nowrap',
-                            padding: '4px',
-                            height: '100px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center'
-                          }}>
-                            {event.name}
-                          </div>
-                        </TableCell>
-                      ))}
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {Array.from({ length: Math.max(14, participants.length) }).map((_, index) => {
-                      const participant = participants[index];
-                      return (
-                        <TableRow key={index}>
-                          <TableCell>{index + 1}</TableCell>
-                          <TableCell></TableCell>
-                          <TableCell>{participant?.name || ''}</TableCell>
-                          <TableCell>{participant?.standard || ''}</TableCell>
-                          <TableCell>{participant?.gender || ''}</TableCell>
-                          <TableCell>
-                            {participant 
-                              ? new Date(participant.dob).toLocaleDateString('en-GB', {
-                                  day: '2-digit',
-                                  month: '2-digit',
-                                  year: 'numeric'
-                                })
-                              : ''
-                            }
-                          </TableCell>
-                          {displayEventColumns.map((event) => (
-                            <TableCell key={event.id}>
-                              {participant?.events?.some(e => e.eventName === event.name) ? 'X' : ''}
-                            </TableCell>
-                          ))}
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              </TableContainer>
+                          <PrintTableHeader />
+                          <TableBody>
+                            {Array.from({ length: ROWS_PER_PAGE }).map((_, rowIdx) => {
+                              const globalIdx = startRow + rowIdx;
+                              const participant = sortedParticipants[globalIdx];
+                              return (
+                                <TableRow key={rowIdx}>
+                                  <TableCell>{globalIdx + 1}</TableCell>
+                                  <TableCell></TableCell>
+                                  <TableCell>{participant?.name || ''}</TableCell>
+                                  <TableCell>{participant?.standard || ''}</TableCell>
+                                  <TableCell>{participant?.gender || ''}</TableCell>
+                                  <TableCell>
+                                    {participant ? new Date(participant.dob).toLocaleDateString('en-GB', {
+                                      day: '2-digit', month: '2-digit', year: 'numeric'
+                                    }) : ''}
+                                  </TableCell>
+                                  {displayCategoryColumns.map((cat, idx) => (
+  <TableCell key={idx}>
+    {participant?.events?.some(e => cat.eventNames.includes(e.eventName)) ? 'X' : ''}
+  </TableCell>
+))}
+                                </TableRow>
+                              );
+                            })}
+                          </TableBody>
+                        </Table>
+                      </TableContainer>
 
-               <Box className="footer-section">
-                <Box mt={1}>
-                  {/* <Typography variant="body2">
-                    <strong>നിബന്ധനകൾ:</strong>
-                    <ol style={{ paddingLeft: '20px', margin: '4px 0' }}>
-                      <li>പ്രവേശന ഫോം മാതൃകാപരമായി തികച്ചും യഥാർഥ വിവരങ്ങൾ പൂരിപ്പിക്കണം.</li>
-                      <li>മാതാപിതാക്കൾ അറിയിക്കുന്ന വിവരങ്ങൾക്ക് കൈക്കൊപ്പം ചേർക്കണം.</li>
-                      <li>കൂടുതൽ വിവരങ്ങൾക്ക് ENGLISH CAPITAL ഉപയോഗിക്കണം.</li>
-                    </ol>
-                  </Typography> */}
-                </Box>
+                      <Box mt={8} mb={5} display="flex" justifyContent="space-between">
+                        <Typography variant="body2">തിയ്യതി: _______________</Typography>
+                        <Typography variant="body2">സ്റ്റാഫ് സെക്രട്ടറി: _______________</Typography>
+                        <Typography variant="body2">ഡയറക്ടർ: _______________</Typography>
+                      </Box>
 
-                <Box mt={1} display="flex" justifyContent="space-between">
-                  <Typography variant="body2">തിയ്യതി: _______________</Typography>
-                  <Typography variant="body2">സ്റ്റാഫ് സെക്രട്ടറി: _______________</Typography>
-                  <Typography variant="body2">ഡയറക്ടർ: _______________</Typography>
-                </Box>
-              </Box>
-            </Paper>
-          ) : (
-            <Box textAlign="center" py={4}>
-              <Typography variant="body1" color="textSecondary">
-                Select a parish to view registration details
-              </Typography>
+                      {!isLastPage && (
+                        <Box className="no-print" sx={{ my: 3, borderTop: '3px dashed #ccc', position: 'relative' }}>
+                          <Chip label="Page Break" size="small" sx={{ position: 'absolute', top: -12, left: '50%', transform: 'translateX(-50%)', bgcolor: '#f0f0f0', fontSize: '11px' }} />
+                        </Box>
+                      )}
+                    </Box>
+                  );
+                })}
+              </Paper>
+            </>
+          ) : !selectedParish ? (
+            <Box className="no-print" sx={{ mt: 3 }}>
+              <ChartCard sx={{ textAlign: 'center', py: 6 }}>
+                <FileText size={48} style={{ color: '#94a3b8', marginBottom: 16 }} />
+                <Typography color="textSecondary" sx={{ fontSize: '1.05rem' }}>Select a parish to view registration details</Typography>
+              </ChartCard>
             </Box>
-          )}
-        </Box>
-      </Container>
+          ) : null}
+        </Container>
+      </DashboardContainer>
     </ThemeProvider>
   );
 };
