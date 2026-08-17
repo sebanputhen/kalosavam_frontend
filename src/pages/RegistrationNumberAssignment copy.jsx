@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box, Paper, Typography, Grid, FormControl, InputLabel, Select, MenuItem,
   Button, TextField, Table, TableBody, TableCell, TableContainer, TableHead,
-  TableRow, CircularProgress, Alert, Chip, Tabs, Tab
+  TableRow, CircularProgress, Alert, Chip, Divider, Tabs, Tab
 } from '@mui/material';
 import { createTheme, ThemeProvider } from '@mui/material/styles';
 import { Save, RefreshCw } from 'lucide-react';
@@ -24,13 +24,12 @@ const SECTION_CONFIG = {
 
 const FORANE_ID = '673799a3cb9b4aa181e53fa2';
 
-// Pre-build reverse lookup for O(1) section resolution
-const CLASS_TO_SECTION = {};
-for (const [section, config] of Object.entries(SECTION_CONFIG)) {
-  for (const cls of config.classes) {
-    CLASS_TO_SECTION[cls] = section;
+const getParticipantSection = (standard) => {
+  for (const [section, config] of Object.entries(SECTION_CONFIG)) {
+    if (config.classes.includes(standard)) return section;
   }
-}
+  return null;
+};
 
 const RegistrationNumberAssignment = () => {
   const [selectedSection, setSelectedSection] = useState('');
@@ -38,10 +37,10 @@ const RegistrationNumberAssignment = () => {
   const [participants, setParticipants] = useState([]);
   const [groupEntries, setGroupEntries] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState({ text: '', type: '' });
   const [activeTab, setActiveTab] = useState(0);
 
+  // Config for numbering
   const [singleStart, setSingleStart] = useState(1);
   const [singleIncrement, setSingleIncrement] = useState(1);
   const [groupStart, setGroupStart] = useState(1);
@@ -52,10 +51,10 @@ const RegistrationNumberAssignment = () => {
   }, []);
 
   useEffect(() => {
-    if (selectedSection && parishes.length > 0) {
+    if (selectedSection) {
       fetchAllRegistrations();
     }
-  }, [selectedSection, parishes]);
+  }, [selectedSection]);
 
   const fetchParishes = async () => {
     try {
@@ -72,154 +71,189 @@ const RegistrationNumberAssignment = () => {
   const fetchAllRegistrations = async () => {
     try {
       setIsLoading(true);
+      // Fetch registrations from all parishes in this forane
+      const allRegistrations = [];
 
-      // Parallel fetch all parishes at once
-      const results = await Promise.allSettled(
-        parishes.map(parish =>
-          axiosInstance.get(`/registrations/parish/${parish._id}`)
-            .then(res => ({
-              parishName: parish.name,
-              parishId: parish._id,
-              registrations: res.data.data.registrations || []
-            }))
-        )
-      );
-
-      const participantMap = {};
-      const groupMap = {};
-
-      for (const result of results) {
-        if (result.status !== 'fulfilled') continue;
-        const { parishName, parishId, registrations } = result.value;
-
-        for (const reg of registrations) {
-          if (CLASS_TO_SECTION[reg.standard] !== selectedSection) continue;
-
-          const eventType = reg.event?.eventType;
-          if (eventType === 'single') {
-            const dobStr = reg.dob ? new Date(reg.dob).toISOString().slice(0, 10) : '';
-            const key = `${reg.name}|${reg.standard}|${reg.gender}|${dobStr}|${parishId}`;
-
-            if (!participantMap[key]) {
-              participantMap[key] = {
-                name: reg.name,
-                standard: reg.standard,
-                gender: reg.gender,
-                dob: reg.dob,
-                parish: parishName,
-                parishId,
-                registrationNumber: reg.registrationNumber || '',
-                events: [],
-                registrationIds: []
-              };
-            }
-            participantMap[key].events.push({
-              eventName: reg.event.eventName
-            });
-            participantMap[key].registrationIds.push(reg._id);
-          } else if (eventType === 'group') {
-            const groupKey = `${parishId}|${reg.event._id}`;
-            if (!groupMap[groupKey]) {
-              groupMap[groupKey] = {
-                parish: parishName,
-                parishId,
-                eventName: reg.event.eventName,
-                groupRegistrationNumber: reg.groupRegistrationNumber || '',
-                participantCount: 0,
-                registrationIds: []
-              };
-            }
-            groupMap[groupKey].participantCount++;
-            groupMap[groupKey].registrationIds.push(reg._id);
-          }
+      for (const parish of parishes) {
+        try {
+          const response = await axiosInstance.get(`/registrations/parish/${parish._id}`);
+          const regs = response.data.data.registrations || [];
+          regs.forEach(reg => {
+            reg._parishName = parish.name;
+            reg._parishId = parish._id;
+          });
+          allRegistrations.push(...regs);
+        } catch (err) {
+          console.error(`Error fetching for parish ${parish.name}:`, err);
         }
       }
 
-      const sortedParticipants = Object.values(participantMap).sort((a, b) =>
-        a.parish.localeCompare(b.parish) || a.name.localeCompare(b.name)
-      );
-      const sortedGroups = Object.values(groupMap).sort((a, b) =>
-        a.parish.localeCompare(b.parish) || a.eventName.localeCompare(b.eventName)
-      );
+      // Filter by selected section
+      const sectionRegs = allRegistrations.filter(reg => {
+        const section = getParticipantSection(reg.standard);
+        return section === selectedSection;
+      });
+
+      // Process individual participants (unique by name+standard+gender+dob+parish)
+      const participantMap = {};
+      const groupMap = {};
+
+      sectionRegs.forEach(reg => {
+        const eventType = reg.event?.eventType;
+        const key = `${reg.name}|${reg.standard}|${reg.gender}|${new Date(reg.dob).toISOString().split('T')[0]}|${reg._parishId}`;
+
+        if (eventType === 'single') {
+          if (!participantMap[key]) {
+            participantMap[key] = {
+              _id: reg._id,
+              name: reg.name,
+              standard: reg.standard,
+              gender: reg.gender,
+              dob: reg.dob,
+              parish: reg._parishName,
+              parishId: reg._parishId,
+              registrationNumber: reg.registrationNumber || '',
+              events: [],
+              registrationIds: []
+            };
+          }
+          participantMap[key].events.push({
+            eventId: reg.event._id,
+            eventName: reg.event.eventName,
+            registrationId: reg._id
+          });
+          participantMap[key].registrationIds.push(reg._id);
+        } else if (eventType === 'group') {
+          // Group: one number per parish per event
+          const groupKey = `${reg._parishId}|${reg.event._id}`;
+          if (!groupMap[groupKey]) {
+            groupMap[groupKey] = {
+              parish: reg._parishName,
+              parishId: reg._parishId,
+              eventId: reg.event._id,
+              eventName: reg.event.eventName,
+              groupRegistrationNumber: reg.groupRegistrationNumber || '',
+              participantCount: 0,
+              registrationIds: []
+            };
+          }
+          groupMap[groupKey].participantCount++;
+          groupMap[groupKey].registrationIds.push(reg._id);
+        }
+      });
+
+      // Sort participants by parish then name
+      const sortedParticipants = Object.values(participantMap).sort((a, b) => {
+        if (a.parish !== b.parish) return a.parish.localeCompare(b.parish);
+        return a.name.localeCompare(b.name);
+      });
+
+      // Sort group entries by parish then event
+      const sortedGroups = Object.values(groupMap).sort((a, b) => {
+        if (a.parish !== b.parish) return a.parish.localeCompare(b.parish);
+        return a.eventName.localeCompare(b.eventName);
+      });
 
       setParticipants(sortedParticipants);
       setGroupEntries(sortedGroups);
+      setIsLoading(false);
     } catch (error) {
       console.error('Error:', error);
-    } finally {
       setIsLoading(false);
     }
   };
 
-  const autoAssignSingleNumbers = useCallback(() => {
-    setParticipants(prev =>
-      prev.map((p, i) => ({ ...p, registrationNumber: String(singleStart + i * singleIncrement) }))
-    );
-  }, [singleStart, singleIncrement]);
-
-  const autoAssignGroupNumbers = useCallback(() => {
-    setGroupEntries(prev =>
-      prev.map((g, i) => ({ ...g, groupRegistrationNumber: String(groupStart + i * groupIncrement) }))
-    );
-  }, [groupStart, groupIncrement]);
-
-  const updateSingleRegNo = useCallback((index, value) => {
-    setParticipants(prev => {
-      const updated = [...prev];
-      updated[index] = { ...updated[index], registrationNumber: value };
-      return updated;
-    });
-  }, []);
-
-  const updateGroupRegNo = useCallback((index, value) => {
-    setGroupEntries(prev => {
-      const updated = [...prev];
-      updated[index] = { ...updated[index], groupRegistrationNumber: value };
-      return updated;
-    });
-  }, []);
-
-  // Batch save with concurrency limit
-  const batchSave = async (items, field) => {
-    setIsSaving(true);
-    let successCount = 0;
-    let errorCount = 0;
-
-    // Build all update tasks
-    const tasks = [];
-    for (const item of items) {
-      const value = item[field];
-      if (!value) continue;
-      for (const regId of item.registrationIds) {
-        tasks.push({ regId, payload: { [field]: value } });
-      }
-    }
-
-    // Execute in batches of 10 for concurrency control
-    const BATCH_SIZE = 10;
-    for (let i = 0; i < tasks.length; i += BATCH_SIZE) {
-      const batch = tasks.slice(i, i + BATCH_SIZE);
-      const results = await Promise.allSettled(
-        batch.map(t => axiosInstance.put(`/registrations/${t.regId}`, t.payload))
-      );
-      for (const r of results) {
-        if (r.status === 'fulfilled') successCount++;
-        else errorCount++;
-      }
-    }
-
-    const label = field === 'registrationNumber' ? 'Individual' : 'Group';
-    setMessage({
-      text: `${label}: ${successCount} updated${errorCount > 0 ? `, ${errorCount} failed` : ''}`,
-      type: errorCount > 0 ? 'warning' : 'success'
-    });
-    setIsSaving(false);
+  const autoAssignSingleNumbers = () => {
+    const updated = participants.map((p, index) => ({
+      ...p,
+      registrationNumber: String(singleStart + index * singleIncrement)
+    }));
+    setParticipants(updated);
   };
 
-  const saveSingleNumbers = () => batchSave(participants, 'registrationNumber');
-  const saveGroupNumbers = () => batchSave(groupEntries, 'groupRegistrationNumber');
+  const autoAssignGroupNumbers = () => {
+    const updated = groupEntries.map((g, index) => ({
+      ...g,
+      groupRegistrationNumber: String(groupStart + index * groupIncrement)
+    }));
+    setGroupEntries(updated);
+  };
 
-  const busy = isLoading || isSaving;
+  const updateSingleRegNo = (index, value) => {
+    const updated = [...participants];
+    updated[index].registrationNumber = value;
+    setParticipants(updated);
+  };
+
+  const updateGroupRegNo = (index, value) => {
+    const updated = [...groupEntries];
+    updated[index].groupRegistrationNumber = value;
+    setGroupEntries(updated);
+  };
+
+  const saveSingleNumbers = async () => {
+    try {
+      setIsLoading(true);
+      let successCount = 0;
+      let errorCount = 0;
+
+      for (const participant of participants) {
+        if (!participant.registrationNumber) continue;
+        for (const regId of participant.registrationIds) {
+          try {
+            await axiosInstance.put(`/registrations/${regId}`, {
+              registrationNumber: participant.registrationNumber
+            });
+            successCount++;
+          } catch (err) {
+            errorCount++;
+            console.error(`Error updating ${regId}:`, err);
+          }
+        }
+      }
+
+      setMessage({
+        text: `Individual: ${successCount} updated${errorCount > 0 ? `, ${errorCount} failed` : ''}`,
+        type: errorCount > 0 ? 'warning' : 'success'
+      });
+      setIsLoading(false);
+    } catch (error) {
+      setMessage({ text: 'Error saving individual numbers', type: 'error' });
+      setIsLoading(false);
+    }
+  };
+
+  const saveGroupNumbers = async () => {
+    try {
+      setIsLoading(true);
+      let successCount = 0;
+      let errorCount = 0;
+
+      for (const group of groupEntries) {
+        if (!group.groupRegistrationNumber) continue;
+        for (const regId of group.registrationIds) {
+          try {
+            await axiosInstance.put(`/registrations/${regId}`, {
+              groupRegistrationNumber: group.groupRegistrationNumber
+            });
+            successCount++;
+          } catch (err) {
+            errorCount++;
+            console.error(`Error updating ${regId}:`, err);
+          }
+        }
+      }
+
+      setMessage({
+        text: `Group: ${successCount} updated${errorCount > 0 ? `, ${errorCount} failed` : ''}`,
+        type: errorCount > 0 ? 'warning' : 'success'
+      });
+      setIsLoading(false);
+    } catch (error) {
+      setMessage({ text: 'Error saving group numbers', type: 'error' });
+      setIsLoading(false);
+    }
+  };
 
   return (
     <ThemeProvider theme={theme}>
@@ -235,6 +269,7 @@ const RegistrationNumberAssignment = () => {
             </Alert>
           )}
 
+          {/* Section Selection */}
           <Grid container spacing={3} sx={{ mb: 3 }}>
             <Grid item xs={12} md={4}>
               <FormControl fullWidth>
@@ -258,7 +293,7 @@ const RegistrationNumberAssignment = () => {
                 variant="outlined"
                 startIcon={<RefreshCw size={18} />}
                 onClick={fetchAllRegistrations}
-                disabled={!selectedSection || busy}
+                disabled={!selectedSection || isLoading}
                 sx={{ height: '56px' }}
                 fullWidth
               >
@@ -267,12 +302,13 @@ const RegistrationNumberAssignment = () => {
             </Grid>
           </Grid>
 
-          {busy ? (
+          {isLoading ? (
             <Box sx={{ display: 'flex', justifyContent: 'center', p: 5 }}>
               <CircularProgress />
             </Box>
           ) : selectedSection ? (
             <>
+              {/* Stats */}
               <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
                 <Chip label={`${participants.length} Individual Participants`} color="primary" variant="outlined" />
                 <Chip label={`${groupEntries.length} Group Entries`} color="secondary" variant="outlined" />
@@ -283,25 +319,40 @@ const RegistrationNumberAssignment = () => {
                 <Tab label={`Group (${groupEntries.length})`} />
               </Tabs>
 
+              {/* Individual Tab */}
               {activeTab === 0 && (
                 <>
                   <Paper variant="outlined" sx={{ p: 2, mb: 3 }}>
                     <Typography variant="subtitle2" sx={{ mb: 2 }}>Auto-Assign Settings (Individual)</Typography>
                     <Grid container spacing={2} alignItems="center">
                       <Grid item xs={6} sm={3}>
-                        <TextField fullWidth size="small" type="number" label="Starting Number"
-                          value={singleStart} onChange={(e) => setSingleStart(Number(e.target.value))} />
+                        <TextField
+                          fullWidth size="small" type="number" label="Starting Number"
+                          value={singleStart}
+                          onChange={(e) => setSingleStart(Number(e.target.value))}
+                        />
                       </Grid>
                       <Grid item xs={6} sm={3}>
-                        <TextField fullWidth size="small" type="number" label="Increment"
-                          value={singleIncrement} onChange={(e) => setSingleIncrement(Number(e.target.value))} />
+                        <TextField
+                          fullWidth size="small" type="number" label="Increment"
+                          value={singleIncrement}
+                          onChange={(e) => setSingleIncrement(Number(e.target.value))}
+                        />
                       </Grid>
                       <Grid item xs={6} sm={3}>
-                        <Button variant="outlined" fullWidth onClick={autoAssignSingleNumbers}>Auto Assign</Button>
+                        <Button variant="outlined" fullWidth onClick={autoAssignSingleNumbers}>
+                          Auto Assign
+                        </Button>
                       </Grid>
                       <Grid item xs={6} sm={3}>
-                        <Button variant="contained" fullWidth startIcon={<Save size={18} />}
-                          onClick={saveSingleNumbers} disabled={busy}>Save Individual</Button>
+                        <Button
+                          variant="contained" fullWidth
+                          startIcon={<Save size={18} />}
+                          onClick={saveSingleNumbers}
+                          disabled={isLoading}
+                        >
+                          Save Individual
+                        </Button>
                       </Grid>
                     </Grid>
                   </Paper>
@@ -321,11 +372,15 @@ const RegistrationNumberAssignment = () => {
                       </TableHead>
                       <TableBody>
                         {participants.map((p, index) => (
-                          <TableRow key={`${p.parishId}-${p.name}-${index}`}>
+                          <TableRow key={index}>
                             <TableCell>{index + 1}</TableCell>
                             <TableCell>
-                              <TextField size="small" variant="outlined" value={p.registrationNumber}
-                                onChange={(e) => updateSingleRegNo(index, e.target.value)} sx={{ width: 120 }} />
+                              <TextField
+                                size="small" variant="outlined"
+                                value={p.registrationNumber}
+                                onChange={(e) => updateSingleRegNo(index, e.target.value)}
+                                sx={{ width: 120 }}
+                              />
                             </TableCell>
                             <TableCell>{p.name}</TableCell>
                             <TableCell>{p.standard}</TableCell>
@@ -344,7 +399,9 @@ const RegistrationNumberAssignment = () => {
                         ))}
                         {participants.length === 0 && (
                           <TableRow>
-                            <TableCell colSpan={7} align="center">No individual participants found in this section</TableCell>
+                            <TableCell colSpan={7} align="center">
+                              No individual participants found in this section
+                            </TableCell>
                           </TableRow>
                         )}
                       </TableBody>
@@ -353,25 +410,40 @@ const RegistrationNumberAssignment = () => {
                 </>
               )}
 
+              {/* Group Tab */}
               {activeTab === 1 && (
                 <>
                   <Paper variant="outlined" sx={{ p: 2, mb: 3 }}>
                     <Typography variant="subtitle2" sx={{ mb: 2 }}>Auto-Assign Settings (Group)</Typography>
                     <Grid container spacing={2} alignItems="center">
                       <Grid item xs={6} sm={3}>
-                        <TextField fullWidth size="small" type="number" label="Starting Number"
-                          value={groupStart} onChange={(e) => setGroupStart(Number(e.target.value))} />
+                        <TextField
+                          fullWidth size="small" type="number" label="Starting Number"
+                          value={groupStart}
+                          onChange={(e) => setGroupStart(Number(e.target.value))}
+                        />
                       </Grid>
                       <Grid item xs={6} sm={3}>
-                        <TextField fullWidth size="small" type="number" label="Increment"
-                          value={groupIncrement} onChange={(e) => setGroupIncrement(Number(e.target.value))} />
+                        <TextField
+                          fullWidth size="small" type="number" label="Increment"
+                          value={groupIncrement}
+                          onChange={(e) => setGroupIncrement(Number(e.target.value))}
+                        />
                       </Grid>
                       <Grid item xs={6} sm={3}>
-                        <Button variant="outlined" fullWidth onClick={autoAssignGroupNumbers}>Auto Assign</Button>
+                        <Button variant="outlined" fullWidth onClick={autoAssignGroupNumbers}>
+                          Auto Assign
+                        </Button>
                       </Grid>
                       <Grid item xs={6} sm={3}>
-                        <Button variant="contained" fullWidth startIcon={<Save size={18} />}
-                          onClick={saveGroupNumbers} disabled={busy}>Save Group</Button>
+                        <Button
+                          variant="contained" fullWidth
+                          startIcon={<Save size={18} />}
+                          onClick={saveGroupNumbers}
+                          disabled={isLoading}
+                        >
+                          Save Group
+                        </Button>
                       </Grid>
                     </Grid>
                   </Paper>
@@ -389,11 +461,15 @@ const RegistrationNumberAssignment = () => {
                       </TableHead>
                       <TableBody>
                         {groupEntries.map((g, index) => (
-                          <TableRow key={`${g.parishId}-${g.eventName}-${index}`}>
+                          <TableRow key={index}>
                             <TableCell>{index + 1}</TableCell>
                             <TableCell>
-                              <TextField size="small" variant="outlined" value={g.groupRegistrationNumber}
-                                onChange={(e) => updateGroupRegNo(index, e.target.value)} sx={{ width: 120 }} />
+                              <TextField
+                                size="small" variant="outlined"
+                                value={g.groupRegistrationNumber}
+                                onChange={(e) => updateGroupRegNo(index, e.target.value)}
+                                sx={{ width: 120 }}
+                              />
                             </TableCell>
                             <TableCell>
                               <Chip size="small" label={g.parish} variant="outlined" color="secondary" />
@@ -406,7 +482,9 @@ const RegistrationNumberAssignment = () => {
                         ))}
                         {groupEntries.length === 0 && (
                           <TableRow>
-                            <TableCell colSpan={5} align="center">No group entries found in this section</TableCell>
+                            <TableCell colSpan={5} align="center">
+                              No group entries found in this section
+                            </TableCell>
                           </TableRow>
                         )}
                       </TableBody>
