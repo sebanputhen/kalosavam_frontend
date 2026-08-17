@@ -1,60 +1,105 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  Box, 
-  Typography, 
-  Button, 
-  FormControl, 
-  InputLabel, 
-  Select, 
-  MenuItem, 
-  Grid, 
-  Paper, 
-  CircularProgress,
-  Chip,
-  Alert,
-  Divider,
-  Snackbar,
-  Tooltip,
-  IconButton,
-  TextField,
-  Switch,
-  FormControlLabel
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import {
+  Box, Container, Typography, Button, FormControl, InputLabel, Select, MenuItem,
+  Grid, CircularProgress, Chip, Alert, Snackbar, TextField, Switch,
+  FormControlLabel, IconButton, Tooltip, Card, CardContent
 } from '@mui/material';
-import SaveIcon from '@mui/icons-material/Save';
-import RefreshIcon from '@mui/icons-material/Refresh';
-import FileDownloadIcon from '@mui/icons-material/FileDownload';
-import InfoIcon from '@mui/icons-material/Info';
-import TimerIcon from '@mui/icons-material/Timer';
-import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
-import PeopleIcon from '@mui/icons-material/People';
-import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
-import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
-import FilterListIcon from '@mui/icons-material/FilterList';
-import ClearIcon from '@mui/icons-material/Clear';
-import { createTheme, ThemeProvider } from '@mui/material/styles';
+import { createTheme, ThemeProvider, styled } from '@mui/material/styles';
+import { Save, RefreshCw, Download, Info, Clock, Users, GripVertical,
+  ArrowUp, ArrowDown, Filter, X, Layers, MapPin } from 'lucide-react';
 import { jsPDF } from "jspdf";
 import autoTable from 'jspdf-autotable';
 import axiosInstance from "../axiosConfig";
 
-// Theme configuration
 const theme = createTheme({
   palette: {
     mode: 'light',
-    primary: {
-      main: '#2563EB',
-      light: '#3B82F6',
-      dark: '#1E40AF'
-    },
-    secondary: {
-      main: '#10B981',
-      light: '#34D399',
-      dark: '#047857'
-    }
+    primary: { main: '#2563EB', light: '#3B82F6', dark: '#1E40AF' },
+    secondary: { main: '#10B981', light: '#34D399', dark: '#047857' },
+    info: { main: '#6366F1', light: '#818CF8', dark: '#4F46E5' },
+    warning: { main: '#F59E0B', light: '#FBBF24', dark: '#D97706' },
+    error: { main: '#EF4444', light: '#F87171', dark: '#DC2626' },
+    background: { default: '#F0F4F8', paper: '#FFFFFF' }
+  },
+  typography: { fontFamily: '"Inter", "Segoe UI", "Roboto", sans-serif' },
+  shape: { borderRadius: 12 }
+});
+
+const DashboardContainer = styled(Box)({
+  minHeight: '100vh',
+  background: 'linear-gradient(135deg, #f0f4f8 0%, #d9e2ec 100%)',
+  paddingTop: 24,
+  paddingBottom: 40,
+});
+
+const StyledCard = styled(Card)({
+  borderRadius: 16,
+  boxShadow: '0 1px 3px rgba(0,0,0,0.08), 0 8px 24px rgba(0,0,0,0.04)',
+  border: '1px solid rgba(0,0,0,0.06)',
+  transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+  '&:hover': {
+    transform: 'translateY(-2px)',
+    boxShadow: '0 4px 12px rgba(0,0,0,0.1), 0 12px 32px rgba(0,0,0,0.06)',
   }
 });
 
+const StyledCardContent = styled(CardContent)({ padding: '24px !important' });
+
+const StatWrapper = styled(Box)({
+  display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+});
+
+const StatValue = styled(Typography)({
+  fontSize: '2rem',
+  fontWeight: 700,
+  lineHeight: 1.2,
+  marginTop: 4,
+  color: '#1a202c',
+});
+
+const IconBox = styled(Box)(({ color }) => ({
+  width: 52,
+  height: 52,
+  borderRadius: 14,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  background: `linear-gradient(135deg, ${color}22, ${color}11)`,
+  border: `1px solid ${color}33`,
+  color: color,
+}));
+
+const ChartCard = styled(Card)({
+  borderRadius: 16,
+  boxShadow: '0 1px 3px rgba(0,0,0,0.08), 0 8px 24px rgba(0,0,0,0.04)',
+  border: '1px solid rgba(0,0,0,0.06)',
+  padding: 24,
+});
+
+const PageHeader = styled(Box)({
+  display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  marginBottom: 32,
+  flexWrap: 'wrap',
+  gap: 16,
+});
+
+const SECTION_COLORS = {
+  'Dominic Savio': '#2563EB',
+  'Alphonsa': '#10B981',
+  'Saint Thomas': '#6366F1',
+};
+
+const GENDER_COLORS = {
+  male: '#2563EB',
+  female: '#DB2777',
+  mixed: '#059669',
+};
+
 const StageAllocation = () => {
-  // State variables
   const [foranes, setForanes] = useState([]);
   const [selectedForane, setSelectedForane] = useState('');
   const [venues, setVenues] = useState([]);
@@ -65,1045 +110,573 @@ const StageAllocation = () => {
   const [showMessage, setShowMessage] = useState(false);
   const [allocations, setAllocations] = useState([]);
   const [participantCounts, setParticipantCounts] = useState({});
-  
-  // State for filters
+
   const [sectionFilter, setSectionFilter] = useState('');
   const [eventNameFilter, setEventNameFilter] = useState('');
-  const [availableSections, setAvailableSections] = useState([]);
   const [showWithParticipantsOnly, setShowWithParticipantsOnly] = useState(false);
-  
-  // Fetch foranes on component mount
-  useEffect(() => {
-    fetchForanes();
-    fetchEvents();
-    fetchCategories();
-  }, []);
 
-  // Fetch venues when forane is selected
-  useEffect(() => {
-    if (selectedForane) {
-      fetchVenuesByForane();
-      fetchAllocations();
-      fetchParticipantCounts();
-    } else {
-      setVenues([]);
-      setAllocations([]);
-    }
-  }, [selectedForane]);
-  
-  // Extract unique sections from events
-  useEffect(() => {
-    const sections = [...new Set(events.map(event => event.section))].filter(Boolean).sort();
-    setAvailableSections(sections);
-  }, [events]);
-  
-  const fetchCategories = async () => {
-    try {
-      const response = await axiosInstance.get("/categories");
-      setCategories(response.data.data.categories || []);
-    } catch (err) {
-      console.error("Failed to fetch Categories", err);
-    }
-  };
-  // Fetch foranes
-  const fetchForanes = async () => {
-    try {
-      setIsLoading(true);
-      const response = await axiosInstance.get("/forane");
-      const allForanes = response.data || [];
-      setForanes(allForanes.filter(f => f._id === '673799a3cb9b4aa181e53fa2'));
-      
-      // setForanes(response.data || []);
-      setIsLoading(false);
-    } catch (err) {
-      console.error("Failed to fetch Foranes", err);
-      setMessage({ text: "Error fetching foranes", type: "error" });
-      setShowMessage(true);
-      setIsLoading(false);
-    }
-  };
-  const getEventParticipantCount = (eventId) => {
-    return participantCounts[eventId] || 0;
-  };
-  // Fetch venues for selected forane
-  const fetchVenuesByForane = async () => {
-    try {
-      setIsLoading(true);
-      const response = await axiosInstance.get(`/venues/parish/${selectedForane}`);
-      setVenues(response.data.data || []);
-      setIsLoading(false);
-    } catch (err) {
-      console.error("Failed to fetch Venues", err);
-      setMessage({ text: "Error fetching venues", type: "error" });
-      setShowMessage(true);
-      setIsLoading(false);
-    }
-  };
-
-  // Fetch all events (independent of forane)
-  const fetchEvents = async () => {
-    try {
-      setIsLoading(true);
-      const response = await axiosInstance.get("/events/stage/On Stage");
-      setEvents(response.data.data.events || []);
-      setIsLoading(false);
-      
-    } catch (err) {
-      console.error("Failed to fetch Events", err);
-      setMessage({ text: "Error fetching events", type: "error" });
-      setShowMessage(true);
-      setIsLoading(false);
-    }
-  };
-  const fetchParticipantCounts = async () => {
-    try {
-      setIsLoading(true);
-      
-      // First, get all parishes for this forane
-      const parishesResponse = await axiosInstance.get(`/parish/forane/${selectedForane}`);
-      const parishes = parishesResponse.data || [];
-      
-      // Create a map of event types for quick lookup
-      const eventTypesMap = {};
-      events.forEach(event => {
-        eventTypesMap[event._id] = event.eventType;
-      });
-      
-      // Initialize counts and parishes tracking objects
-      const counts = {};
-      const parishesPerEvent = {};
-      
-      // Fetch counts for each parish and aggregate
-      for (const parish of parishes) {
-        try {
-          const response = await axiosInstance.get(`/api/event-stats/parish/${parish._id}`);
-          const stats = response.data.data.stats || [];
-          
-          // Process each event stat based on event type
-          stats.forEach(stat => {
-            const eventId = stat.eventId;
-            const eventType = eventTypesMap[eventId] || 'single'; // Default to single if not found
-            
-            // Initialize tracking objects if needed
-            if (!counts[eventId]) {
-              counts[eventId] = 0;
-            }
-            
-            if (!parishesPerEvent[eventId]) {
-              parishesPerEvent[eventId] = new Set();
-            }
-            
-            if (eventType === 'single') {
-              // For single events, count total participants
-              counts[eventId] += stat.participantCount;
-            } else {
-              // For group events, only count the parish if there's participation
-              if (stat.participantCount > 0) {
-                parishesPerEvent[eventId].add(parish._id);
-              }
-            }
-          });
-        } catch (error) {
-          console.error(`Failed to fetch stats for parish ${parish.name}`, error);
-        }
-      }
-      
-      // Update counts for group events to reflect parish count instead of participant count
-      Object.keys(parishesPerEvent).forEach(eventId => {
-        if (eventTypesMap[eventId] === 'group') {
-          counts[eventId] = parishesPerEvent[eventId].size;
-        }
-      });
-      
-      setParticipantCounts(counts);
-      setIsLoading(false);
-    } catch (err) {
-      console.error("Failed to fetch participant counts", err);
-      setIsLoading(false);
-    }
-  };
-  // Fetch existing allocations for the selected forane
-  const fetchAllocations = async () => {
-    try {
-      setIsLoading(true);
-      const response = await axiosInstance.get(`/allocations/forane/${selectedForane}`);
-      setAllocations(response.data.data || []);
-      setIsLoading(false);
-    } catch (err) {
-      console.error("Failed to fetch Allocations", err);
-      // If no allocations exist yet, this is not an error
-      if (err.response && err.response.status === 404) {
-        setAllocations([]);
-      } else {
-        setMessage({ text: "Error fetching allocations", type: "error" });
-        setShowMessage(true);
-      }
-      setIsLoading(false);
-    }
-  };
-
-  // State for drag and drop
   const [draggedEvent, setDraggedEvent] = useState(null);
   const [dragSourceVenue, setDragSourceVenue] = useState(null);
   const [dragSourceIndex, setDragSourceIndex] = useState(null);
-  const moveEventUp = (venueId, index) => {
-    if (index === 0) return; // Already at the top
-    
-    const venueAllocation = allocations.find(alloc => alloc.venueId === venueId);
-    if (!venueAllocation) return;
-    
-    const newEventIds = Array.from(venueAllocation.eventIds);
-    
-    // Swap with the event above
-    [newEventIds[index], newEventIds[index - 1]] = [newEventIds[index - 1], newEventIds[index]];
-    
-    // Update allocations
-    const newAllocations = allocations.filter(alloc => alloc.venueId !== venueId);
-    newAllocations.push({ ...venueAllocation, eventIds: newEventIds });
-    
-    setAllocations(newAllocations);
-  };
-  
-  const moveEventDown = (venueId, index) => {
-    const venueAllocation = allocations.find(alloc => alloc.venueId === venueId);
-    if (!venueAllocation || index >= venueAllocation.eventIds.length - 1) return; // Already at the bottom
-    
-    const newEventIds = Array.from(venueAllocation.eventIds);
-    
-    // Swap with the event below
-    [newEventIds[index], newEventIds[index + 1]] = [newEventIds[index + 1], newEventIds[index]];
-    
-    // Update allocations
-    const newAllocations = allocations.filter(alloc => alloc.venueId !== venueId);
-    newAllocations.push({ ...venueAllocation, eventIds: newEventIds });
-    
-    setAllocations(newAllocations);
-  };
-  // Handle drag start
-  const handleDragStart = (event, eventId, venueId, index) => {
-    setDraggedEvent(eventId);
-    setDragSourceVenue(venueId);
-    setDragSourceIndex(index);
-    
-    // Set data for HTML5 drag and drop
-    event.dataTransfer.setData('text/plain', eventId);
-    event.dataTransfer.effectAllowed = 'move';
-  };
 
-  // Handle drag over
-  const handleDragOver = (event) => {
-    event.preventDefault();
-    event.dataTransfer.dropEffect = 'move';
-  };
-  const getEventMinutes = (event) => {
-    if (!event || !event.category) return null;
-  
-    // If category is an object, use its _id
-    const categoryId = typeof event.category === 'object' 
-      ? event.category._id 
-      : event.category;
-  
-    const category = categories.find(cat => cat._id === categoryId);
-  
-    return category?.minutes || null;
-  };
-  // Handle drop
-  const handleDrop = (event, targetVenueId, targetIndex) => {
-    event.preventDefault();
-    
-    if (!draggedEvent) return;
-    
-    // Same venue, reordering events
-    if (dragSourceVenue === targetVenueId) {
-      const venueAllocation = allocations.find(alloc => alloc.venueId === targetVenueId) || 
-        { venueId: targetVenueId, eventIds: [] };
-      
-      const newEventIds = Array.from(venueAllocation.eventIds);
-      
-      // Remove from source position and add to target position
-      newEventIds.splice(dragSourceIndex, 1);
-      newEventIds.splice(targetIndex, 0, draggedEvent);
-      
-      // Update allocations
-      const newAllocations = allocations.filter(alloc => alloc.venueId !== targetVenueId);
-      newAllocations.push({ ...venueAllocation, eventIds: newEventIds });
-      
-      setAllocations(newAllocations);
-    } 
-    // Different venues
-    else {
-      const sourceVenueAllocation = allocations.find(alloc => alloc.venueId === dragSourceVenue) || 
-        { venueId: dragSourceVenue, eventIds: [] };
-      const destVenueAllocation = allocations.find(alloc => alloc.venueId === targetVenueId) || 
-        { venueId: targetVenueId, eventIds: [] };
-      
-      // Copy arrays
-      const newSourceEventIds = Array.from(sourceVenueAllocation.eventIds);
-      const newDestEventIds = Array.from(destVenueAllocation.eventIds);
-      
-      // Remove from source
-      newSourceEventIds.splice(dragSourceIndex, 1);
-      
-      // Add to destination
-      if (targetIndex !== undefined) {
-        newDestEventIds.splice(targetIndex, 0, draggedEvent);
-      } else {
-        newDestEventIds.push(draggedEvent);
+  // Initial load: parallel fetch foranes, events, categories
+  useEffect(() => {
+    (async () => {
+      try {
+        setIsLoading(true);
+        const [foraneRes, eventsRes, catRes] = await Promise.allSettled([
+          axiosInstance.get('/forane'),
+          axiosInstance.get('/events/stage/On Stage'),
+          axiosInstance.get('/categories')
+        ]);
+        if (foraneRes.status === 'fulfilled') {
+          setForanes((foraneRes.value.data || []).filter(f => f._id === '673799a3cb9b4aa181e53fa2'));
+        }
+        if (eventsRes.status === 'fulfilled') {
+          setEvents(eventsRes.value.data.data.events || []);
+        }
+        if (catRes.status === 'fulfilled') {
+          setCategories(catRes.value.data.data.categories || []);
+        }
+      } catch (err) {
+        console.error('Error fetching initial data:', err);
+      } finally {
+        setIsLoading(false);
       }
-      
-      // Update allocations
-      const newAllocations = allocations.filter(
-        alloc => alloc.venueId !== dragSourceVenue && alloc.venueId !== targetVenueId
-      );
-      
-      newAllocations.push(
-        { ...sourceVenueAllocation, eventIds: newSourceEventIds },
-        { ...destVenueAllocation, eventIds: newDestEventIds }
-      );
-      
-      setAllocations(newAllocations);
+    })();
+  }, []);
+
+  // When forane selected: parallel fetch venues, allocations, participant counts
+  useEffect(() => {
+    if (!selectedForane) { setVenues([]); setAllocations([]); return; }
+    (async () => {
+      try {
+        setIsLoading(true);
+        const [venueRes, allocRes, parishRes] = await Promise.allSettled([
+          axiosInstance.get(`/venues/parish/${selectedForane}`),
+          axiosInstance.get(`/allocations/forane/${selectedForane}`),
+          axiosInstance.get(`/parish/forane/${selectedForane}`)
+        ]);
+
+        if (venueRes.status === 'fulfilled') setVenues(venueRes.value.data.data || []);
+        if (allocRes.status === 'fulfilled') setAllocations(allocRes.value.data.data || []);
+        else setAllocations([]);
+
+        // Fetch participant counts in parallel per parish
+        if (parishRes.status === 'fulfilled') {
+          const parishes = parishRes.value.data || [];
+          const eventTypesMap = {};
+          events.forEach(e => { eventTypesMap[e._id] = e.eventType; });
+
+          const statsResults = await Promise.allSettled(
+            parishes.map(p => axiosInstance.get(`/api/event-stats/parish/${p._id}`))
+          );
+
+          const counts = {};
+          const parishesPerEvent = {};
+
+          statsResults.forEach(result => {
+            if (result.status !== 'fulfilled') return;
+            const stats = result.value.data.data.stats || [];
+            const parishId = result.value.config?.url?.split('/').pop();
+
+            stats.forEach(stat => {
+              const eventId = stat.eventId;
+              const eventType = eventTypesMap[eventId] || 'single';
+              if (!counts[eventId]) counts[eventId] = 0;
+              if (!parishesPerEvent[eventId]) parishesPerEvent[eventId] = new Set();
+
+              if (eventType === 'single') {
+                counts[eventId] += stat.participantCount;
+              } else if (stat.participantCount > 0) {
+                parishesPerEvent[eventId].add(parishId);
+              }
+            });
+          });
+
+          Object.keys(parishesPerEvent).forEach(eventId => {
+            if (eventTypesMap[eventId] === 'group') {
+              counts[eventId] = parishesPerEvent[eventId].size;
+            }
+          });
+
+          setParticipantCounts(counts);
+        }
+      } catch (err) {
+        console.error('Error:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    })();
+  }, [selectedForane, events]);
+
+  const availableSections = useMemo(() =>
+    [...new Set(events.map(e => e.section))].filter(Boolean).sort(),
+    [events]
+  );
+
+  const categoryMinutesMap = useMemo(() => {
+    const map = {};
+    categories.forEach(cat => { map[cat._id] = cat.minutes || null; });
+    return map;
+  }, [categories]);
+
+  const getEventMinutes = useCallback((event) => {
+    if (!event?.category) return null;
+    const categoryId = typeof event.category === 'object' ? event.category._id : event.category;
+    return categoryMinutesMap[categoryId] || null;
+  }, [categoryMinutesMap]);
+
+  const getEventParticipantCount = useCallback((eventId) => participantCounts[eventId] || 0, [participantCounts]);
+
+  const allocatedEventIds = useMemo(() => new Set(allocations.flatMap(a => a.eventIds)), [allocations]);
+
+  const unallocatedEvents = useMemo(() => {
+    let filtered = events.filter(e => !allocatedEventIds.has(e._id));
+    if (sectionFilter) filtered = filtered.filter(e => e.section === sectionFilter);
+    if (eventNameFilter) {
+      const term = eventNameFilter.toLowerCase();
+      filtered = filtered.filter(e => e.eventName.toLowerCase().includes(term));
     }
-    
-    // Reset drag state
-    setDraggedEvent(null);
-    setDragSourceVenue(null);
-    setDragSourceIndex(null);
-  };
-  
-  // Handle drop for unallocated events area
-  const handleDropToUnallocated = (event) => {
-    event.preventDefault();
-    
-    if (!draggedEvent || !dragSourceVenue) return;
-    
-    const sourceVenueAllocation = allocations.find(alloc => alloc.venueId === dragSourceVenue);
-    if (!sourceVenueAllocation) return;
-    
-    // Copy array and remove event
-    const newSourceEventIds = Array.from(sourceVenueAllocation.eventIds);
-    newSourceEventIds.splice(dragSourceIndex, 1);
-    
-    // Update allocations
-    const newAllocations = allocations.filter(alloc => alloc.venueId !== dragSourceVenue);
-    if (newSourceEventIds.length > 0) {
-      newAllocations.push({ ...sourceVenueAllocation, eventIds: newSourceEventIds });
-    }
-    
-    setAllocations(newAllocations);
-    
-    // Reset drag state
-    setDraggedEvent(null);
-    setDragSourceVenue(null);
-    setDragSourceIndex(null);
+    if (showWithParticipantsOnly) filtered = filtered.filter(e => getEventParticipantCount(e._id) > 0);
+    return filtered;
+  }, [events, allocatedEventIds, sectionFilter, eventNameFilter, showWithParticipantsOnly, getEventParticipantCount]);
+
+  const allocatedCount = useMemo(() => allocations.reduce((t, a) => t + a.eventIds.length, 0), [allocations]);
+
+  const moveEventUp = (venueId, index) => {
+    if (index === 0) return;
+    const va = allocations.find(a => a.venueId === venueId);
+    if (!va) return;
+    const ids = [...va.eventIds];
+    [ids[index], ids[index - 1]] = [ids[index - 1], ids[index]];
+    setAllocations(allocations.map(a => a.venueId === venueId ? { ...a, eventIds: ids } : a));
   };
 
-  // Save allocations
+  const moveEventDown = (venueId, index) => {
+    const va = allocations.find(a => a.venueId === venueId);
+    if (!va || index >= va.eventIds.length - 1) return;
+    const ids = [...va.eventIds];
+    [ids[index], ids[index + 1]] = [ids[index + 1], ids[index]];
+    setAllocations(allocations.map(a => a.venueId === venueId ? { ...a, eventIds: ids } : a));
+  };
+
+  const handleDragStart = (e, eventId, venueId, index) => {
+    setDraggedEvent(eventId); setDragSourceVenue(venueId); setDragSourceIndex(index);
+    e.dataTransfer.setData('text/plain', eventId);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragOver = (e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; };
+
+  const handleDrop = (e, targetVenueId, targetIndex) => {
+    e.preventDefault();
+    if (!draggedEvent) return;
+
+    if (dragSourceVenue === targetVenueId) {
+      const va = allocations.find(a => a.venueId === targetVenueId) || { venueId: targetVenueId, eventIds: [] };
+      const ids = [...va.eventIds];
+      ids.splice(dragSourceIndex, 1);
+      ids.splice(targetIndex, 0, draggedEvent);
+      setAllocations(prev => {
+        const rest = prev.filter(a => a.venueId !== targetVenueId);
+        return [...rest, { ...va, eventIds: ids }];
+      });
+    } else {
+      const src = allocations.find(a => a.venueId === dragSourceVenue) || { venueId: dragSourceVenue, eventIds: [] };
+      const dst = allocations.find(a => a.venueId === targetVenueId) || { venueId: targetVenueId, eventIds: [] };
+      const srcIds = [...src.eventIds]; const dstIds = [...dst.eventIds];
+      srcIds.splice(dragSourceIndex, 1);
+      targetIndex !== undefined ? dstIds.splice(targetIndex, 0, draggedEvent) : dstIds.push(draggedEvent);
+      setAllocations(prev => {
+        const rest = prev.filter(a => a.venueId !== dragSourceVenue && a.venueId !== targetVenueId);
+        return [...rest, { ...src, eventIds: srcIds }, { ...dst, eventIds: dstIds }];
+      });
+    }
+    setDraggedEvent(null); setDragSourceVenue(null); setDragSourceIndex(null);
+  };
+
+  const handleDropToUnallocated = (e) => {
+    e.preventDefault();
+    if (!draggedEvent || !dragSourceVenue) return;
+    const src = allocations.find(a => a.venueId === dragSourceVenue);
+    if (!src) return;
+    const ids = [...src.eventIds];
+    ids.splice(dragSourceIndex, 1);
+    setAllocations(prev => {
+      const rest = prev.filter(a => a.venueId !== dragSourceVenue);
+      return ids.length > 0 ? [...rest, { ...src, eventIds: ids }] : rest;
+    });
+    setDraggedEvent(null); setDragSourceVenue(null); setDragSourceIndex(null);
+  };
+
   const saveAllocations = async () => {
     try {
       setIsLoading(true);
-      await axiosInstance.post("/allocations", {
-        foraneId: selectedForane,
-        allocations: allocations
-      });
-      setMessage({ text: "Allocations saved successfully", type: "success" });
+      await axiosInstance.post('/allocations', { foraneId: selectedForane, allocations });
+      setMessage({ text: 'Allocations saved successfully', type: 'success' });
       setShowMessage(true);
-      setIsLoading(false);
     } catch (err) {
-      console.error("Failed to save allocations", err);
-      setMessage({ text: "Error saving allocations", type: "error" });
+      console.error('Failed to save allocations', err);
+      setMessage({ text: 'Error saving allocations', type: 'error' });
       setShowMessage(true);
+    } finally {
       setIsLoading(false);
     }
   };
 
-  // Export allocations to PDF
   const exportToPDF = () => {
     if (!venues.length || !allocations.length) {
-      setMessage({ text: "No allocations to export", type: "error" });
-      setShowMessage(true);
-      return;
+      setMessage({ text: 'No allocations to export', type: 'error' }); setShowMessage(true); return;
     }
-    
     const doc = new jsPDF();
     const foraneName = foranes.find(f => f._id === selectedForane)?.name || 'Forane';
-    
-    doc.setFontSize(16);
-    doc.text(`Stage Allocations - ${foraneName}`, 14, 20);
-    doc.setFontSize(10);
-    doc.text(`Generated on ${new Date().toLocaleDateString()}`, 14, 30);
-    
+    doc.setFontSize(16); doc.text(`Stage Allocations - ${foraneName}`, 14, 20);
+    doc.setFontSize(10); doc.text(`Generated on ${new Date().toLocaleDateString()}`, 14, 30);
     let yPos = 40;
-    
     venues.forEach(venue => {
-      const venueAllocation = allocations.find(a => a.venueId === venue._id);
-      if (!venueAllocation || !venueAllocation.eventIds.length) return;
-      
-      doc.setFontSize(14);
-      doc.text(`Venue: ${venue.name}`, 14, yPos);
-      doc.setFontSize(10);
-      doc.text(`Capacity: ${venue.capacity}`, 14, yPos + 7);
+      const va = allocations.find(a => a.venueId === venue._id);
+      if (!va || !va.eventIds.length) return;
+      doc.setFontSize(14); doc.text(`Venue: ${venue.name}`, 14, yPos);
+      doc.setFontSize(10); doc.text(`Capacity: ${venue.capacity}`, 14, yPos + 7);
       yPos += 15;
-      
-      const tableData = venueAllocation.eventIds.map((eventId, index) => {
-        const event = events.find(e => e._id === eventId);
-        if (!event) return [index + 1, 'Unknown Event', 'N/A', 'N/A'];
-        
-        return [
-          index + 1,
-          event.eventName,
-          event.gender === 'male' ? 'Boys' : event.gender === 'female' ? 'Girls' : 'Mixed',
-          event.eventType === 'single' ? 'Single' : 'Group'
-        ];
+      const tableData = va.eventIds.map((eventId, i) => {
+        const ev = events.find(e => e._id === eventId);
+        if (!ev) return [i + 1, 'Unknown', 'N/A', 'N/A'];
+        return [i + 1, ev.eventName,
+          ev.gender === 'male' ? 'Boys' : ev.gender === 'female' ? 'Girls' : 'Mixed',
+          ev.eventType === 'single' ? 'Single' : 'Group'];
       });
-      
       autoTable(doc, {
         startY: yPos,
         head: [['No.', 'Event Name', 'Gender', 'Type']],
         body: tableData,
-        styles: { 
-          fontSize: 9,
-          cellPadding: 3
-        },
-        headStyles: { 
-          fillColor: [37, 99, 235], 
-          textColor: 255,
-          fontSize: 10,
-          fontStyle: 'bold'
-        }
+        styles: { fontSize: 9, cellPadding: 3 },
+        headStyles: { fillColor: [37, 99, 235], textColor: 255, fontSize: 10, fontStyle: 'bold' }
       });
-      
       yPos = doc.lastAutoTable.finalY + 20;
-      
-      // Add new page if needed
-      if (yPos > 250) {
-        doc.addPage();
-        yPos = 20;
-      }
+      if (yPos > 250) { doc.addPage(); yPos = 20; }
     });
-    
     doc.save(`${foraneName}-stage-allocations.pdf`);
   };
 
-  // Get unallocated events with filters
-  const getUnallocatedEvents = () => {
-    const allocatedEventIds = allocations.flatMap(a => a.eventIds);
-    let filteredEvents = events.filter(event => !allocatedEventIds.includes(event._id));
-    
-    // Apply section filter if set
-    if (sectionFilter) {
-      filteredEvents = filteredEvents.filter(event => event.section === sectionFilter);
-    }
-    
-    // Apply event name filter if set
-    if (eventNameFilter) {
-      const searchTerm = eventNameFilter.toLowerCase();
-      filteredEvents = filteredEvents.filter(event => 
-        event.eventName.toLowerCase().includes(searchTerm)
-      );
-    }
-    
-    // Apply participants filter if enabled
-    if (showWithParticipantsOnly) {
-      filteredEvents = filteredEvents.filter(event => 
-        getEventParticipantCount(event._id) > 0
-      );
-    }
-    
-    return filteredEvents;
-  };
-  
-  // Clear all filters
-  const clearFilters = () => {
-    setSectionFilter('');
-    setEventNameFilter('');
-    setShowWithParticipantsOnly(false);
+  const clearFilters = () => { setSectionFilter(''); setEventNameFilter(''); setShowWithParticipantsOnly(false); };
+
+  const statisticsCards = [
+    { title: 'Total Venues', value: venues.length, color: '#2563EB', icon: <MapPin size={24} /> },
+    { title: 'Allocated Events', value: allocatedCount, color: '#10B981', icon: <Layers size={24} /> },
+    { title: 'Unallocated', value: events.length - allocatedCount, color: '#EF4444', icon: <Filter size={24} /> },
+  ];
+
+  const renderEventCard = (event, venueId, index, showReorder, totalInVenue) => {
+    const minutes = getEventMinutes(event);
+    const count = getEventParticipantCount(event._id);
+    const isGroup = event.eventType === 'group';
+    const sColor = SECTION_COLORS[event.section] || '#6366F1';
+    const gColor = GENDER_COLORS[event.gender] || '#059669';
+
+    return (
+      <Box
+        key={event._id}
+        draggable
+        onDragStart={(e) => handleDragStart(e, event._id, venueId, index)}
+        onDragOver={handleDragOver}
+        onDrop={venueId !== 'unallocated' ? (e) => handleDrop(e, venueId, index) : undefined}
+        sx={{
+          p: 2, borderRadius: 3, cursor: 'grab',
+          borderLeft: `4px solid ${gColor}`,
+          bgcolor: draggedEvent === event._id ? 'rgba(37,99,235,0.05)' : 'white',
+          boxShadow: draggedEvent === event._id
+            ? '0 4px 12px rgba(0,0,0,0.12)'
+            : '0 1px 3px rgba(0,0,0,0.06)',
+          transition: 'all 0.2s ease',
+          '&:hover': { boxShadow: '0 2px 8px rgba(0,0,0,0.1)' },
+          '&:active': { cursor: 'grabbing' },
+          display: 'flex', alignItems: 'center', gap: 1,
+          minWidth: venueId === 'unallocated' ? 220 : 'auto',
+        }}
+      >
+        {showReorder && (
+          <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+            <IconButton size="small" onClick={() => moveEventUp(venueId, index)}
+              disabled={index === 0} sx={{ p: 0.25 }}>
+              <ArrowUp size={14} />
+            </IconButton>
+            <IconButton size="small" onClick={() => moveEventDown(venueId, index)}
+              disabled={index >= totalInVenue - 1} sx={{ p: 0.25 }}>
+              <ArrowDown size={14} />
+            </IconButton>
+          </Box>
+        )}
+        <Box sx={{ flexGrow: 1 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+            <Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#1a202c', fontSize: '0.8rem' }}>
+              {event.section} — {event.eventName}
+            </Typography>
+            <Box sx={{ display: 'flex', gap: 0.5 }}>
+              {minutes && (
+                <Tooltip title={isGroup ? `${minutes} min/group` : `${minutes} min/participant`}>
+                  <Chip size="small" icon={<Clock size={12} />} label={`${minutes}m`}
+                    variant="outlined" sx={{ height: 22, fontSize: '0.7rem' }} />
+                </Tooltip>
+              )}
+              <Tooltip title={isGroup ? 'Participating Parishes' : 'Total Participants'}>
+                <Chip size="small" icon={<Users size={12} />} label={count}
+                  sx={{
+                    height: 22, fontSize: '0.7rem', fontWeight: 600,
+                    bgcolor: count > 0 ? '#10B98115' : 'rgba(0,0,0,0.04)',
+                    color: count > 0 ? '#10B981' : '#94a3b8',
+                    border: count > 0 ? '1px solid #10B98130' : '1px solid rgba(0,0,0,0.08)',
+                  }} />
+              </Tooltip>
+            </Box>
+          </Box>
+          <Box sx={{ display: 'flex', gap: 0.5 }}>
+            <Chip size="small"
+              label={event.gender === 'male' ? 'Boys' : event.gender === 'female' ? 'Girls' : 'Mixed'}
+              variant="outlined" sx={{ height: 20, fontSize: '0.7rem' }}
+              color={event.gender === 'male' ? 'primary' : event.gender === 'female' ? 'error' : 'success'} />
+            <Chip size="small" label={isGroup ? 'Group' : 'Individual'}
+              variant="outlined" sx={{ height: 20, fontSize: '0.7rem' }} />
+          </Box>
+        </Box>
+      </Box>
+    );
   };
 
-  // Render venue card with allocated events
   const renderVenueCard = (venue) => {
-    const venueAllocation = allocations.find(a => a.venueId === venue._id) || { venueId: venue._id, eventIds: [] };
-    
-    // Calculate total time for this venue (participants * minutes per event)
-    const totalTimeInMinutes = venueAllocation.eventIds.reduce((total, eventId) => {
-      const event = events.find(e => e._id === eventId);
-      if (!event) return total;
-      
-      const minutes = getEventMinutes(event) || 0;
-      const participantCount = getEventParticipantCount(eventId);
-      
-      // For BOTH group and individual events, multiply minutes by number of participants/parishes
-      return total + (minutes * participantCount);
+    const va = allocations.find(a => a.venueId === venue._id) || { venueId: venue._id, eventIds: [] };
+    const totalMinutes = va.eventIds.reduce((total, eventId) => {
+      const ev = events.find(e => e._id === eventId);
+      if (!ev) return total;
+      return total + ((getEventMinutes(ev) || 0) * getEventParticipantCount(eventId));
     }, 0);
-    
-    // Format total time (convert to hours and minutes if over 60 minutes)
-    const formattedTotalTime = totalTimeInMinutes >= 60 
-      ? `${Math.floor(totalTimeInMinutes / 60)}h ${totalTimeInMinutes % 60}m` 
-      : `${totalTimeInMinutes}m`;
-    
+    const timeLabel = totalMinutes >= 60
+      ? `${Math.floor(totalMinutes / 60)}h ${totalMinutes % 60}m`
+      : `${totalMinutes}m`;
+
     return (
       <Grid item xs={12} md={6} lg={4} key={venue._id}>
-        <Paper variant="outlined" sx={{ borderRadius: 2, height: '100%' }}>
-          <Box sx={{ 
-            p: 2, 
-            borderBottom: '1px solid #e0e0e0',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            bgcolor: 'primary.light',
-            color: 'white',
-            borderRadius: '8px 8px 0 0'
+        <Box sx={{
+          borderRadius: 4, overflow: 'hidden',
+          border: '1px solid rgba(0,0,0,0.06)',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.08), 0 8px 24px rgba(0,0,0,0.04)',
+          height: '100%', display: 'flex', flexDirection: 'column',
+        }}>
+          <Box sx={{
+            p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+            background: 'linear-gradient(135deg, #2563EB, #1E40AF)', color: 'white',
           }}>
-            <Typography variant="h6">{venue.name}</Typography>
-            <Chip 
-              label={`Total: ${formattedTotalTime}`} 
-              color="primary"
-              variant="outlined"
-              sx={{ bgcolor: 'white' }}
-            />
+            <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>{venue.name}</Typography>
+            <Chip label={`Total: ${timeLabel}`} size="small"
+              sx={{ bgcolor: 'rgba(255,255,255,0.2)', color: 'white', fontWeight: 600, border: '1px solid rgba(255,255,255,0.3)' }} />
           </Box>
-          
           <Box
             onDragOver={handleDragOver}
             onDrop={(e) => handleDrop(e, venue._id)}
-            sx={{ 
-              p: 2, 
-              minHeight: 200,
-              transition: 'background-color 0.2s ease'
-            }}
+            sx={{ p: 2, minHeight: 180, display: 'flex', flexDirection: 'column', gap: 1.5, flexGrow: 1 }}
           >
-            {venueAllocation.eventIds.length > 0 ? (
-              venueAllocation.eventIds.map((eventId, index) => {
-                const event = events.find(e => e._id === eventId);
-                if (!event) return null;
-                
-                const minutes = getEventMinutes(event);
-                const participantCount = getEventParticipantCount(event._id);
-                const isGroupEvent = event.eventType === 'group';
-                
-                return (
-                  <Paper
-                    key={event._id}
-                    draggable
-                    onDragStart={(e) => handleDragStart(e, event._id, venue._id, index)}
-                    onDragOver={handleDragOver}
-                    onDrop={(e) => handleDrop(e, venue._id, index)}
-                    elevation={draggedEvent === event._id ? 6 : 1}
-                    sx={{ 
-                      p: 2, 
-                      mb: 2, 
-                      display: 'flex',
-                      alignItems: 'center',
-                      borderLeft: '4px solid',
-                      borderLeftColor: event.gender === 'male' ? '#2563EB' : 
-                                       event.gender === 'female' ? '#DB2777' : '#059669',
-                      bgcolor: draggedEvent === event._id ? 'rgba(37, 99, 235, 0.05)' : 'white',
-                      transition: 'box-shadow 0.2s ease',
-                      cursor: 'grab',
-                      '&:active': {
-                        cursor: 'grabbing'
-                      }
-                    }}
-                  >
-                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                      {/* <Box sx={{ mr: 1, color: 'text.secondary' }}>
-                        <DragIndicatorIcon />
-                      </Box> */}
-                      <Box sx={{ display: 'flex', flexDirection: 'column', mr: 1, color: 'text.secondary' }}>
-                        <IconButton 
-                          size="small" 
-                          onClick={() => moveEventUp(venue._id, index)}
-                          disabled={index === 0}
-                          sx={{ p: 0.5 }}
-                        >
-                          <ArrowUpwardIcon fontSize="small" />
-                        </IconButton>
-                        <IconButton 
-                          size="small" 
-                          onClick={() => moveEventDown(venue._id, index)}
-                          disabled={index === venueAllocation.eventIds.length - 1}
-                          sx={{ p: 0.5 }}
-                        >
-                          <ArrowDownwardIcon fontSize="small" />
-                        </IconButton>
-                      </Box>
-                    </Box>
-                    <Box sx={{ flexGrow: 1 }}>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <Typography variant="subtitle1" sx={{ fontWeight: 500, fontSize: 12 }}>
-                          {event.section}-{event.eventName}
-                        </Typography>
-                        <Box sx={{ display: 'flex', gap: 1 }}>
-                          {minutes && (
-                            <Tooltip title={isGroupEvent 
-                              ? `${minutes} minutes per group` 
-                              : `${minutes} minutes per participant`
-                            }>
-                              <Chip
-                                size="small"
-                                icon={<TimerIcon />}
-                                label={`${minutes} mins`}
-                                color="default"
-                                variant="outlined"
-                                sx={{ height: 24 }}
-                              />
-                            </Tooltip>
-                          )}
-                          <Tooltip title={isGroupEvent 
-                            ? "Participating Parishes" 
-                            : "Total Participants"
-                          }>
-                            <Chip
-                              size="small"
-                              icon={<PeopleIcon />}
-                              label={isGroupEvent ? `${participantCount}` : participantCount}
-                              color={participantCount > 0 ? "secondary" : "default"}
-                              variant="outlined"
-                              sx={{ height: 24 }}
-                            />
-                          </Tooltip>
-                        </Box>
-                      </Box>
-                      <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
-                        <Chip 
-                          size="small" 
-                          label={event.gender === 'male' ? 'Boys' : 
-                                 event.gender === 'female' ? 'Girls' : 'Mixed'} 
-                          color={event.gender === 'male' ? 'primary' : 
-                                 event.gender === 'female' ? 'error' : 'success'}
-                          variant="outlined"
-                        />
-                        <Chip 
-                          size="small" 
-                          label={event.eventType === 'single' ? 'Single' : 'Group'} 
-                          color="secondary"
-                          variant="outlined"
-                        />
-                      </Box>
-                    </Box>
-                  </Paper>
-                );
+            {va.eventIds.length > 0 ? (
+              va.eventIds.map((eventId, index) => {
+                const ev = events.find(e => e._id === eventId);
+                if (!ev) return null;
+                return renderEventCard(ev, venue._id, index, true, va.eventIds.length);
               })
             ) : (
-              <Box sx={{ 
-                display: 'flex', 
-                justifyContent: 'center', 
-                alignItems: 'center', 
-                height: 100, 
-                border: '2px dashed #e0e0e0',
-                borderRadius: 2,
-                color: 'text.secondary'
+              <Box sx={{
+                display: 'flex', justifyContent: 'center', alignItems: 'center',
+                height: 100, border: '2px dashed rgba(0,0,0,0.1)', borderRadius: 3, color: '#94a3b8'
               }}>
-                <Typography>Drag events here</Typography>
+                <Typography variant="body2">Drag events here</Typography>
               </Box>
             )}
           </Box>
-        </Paper>
+        </Box>
       </Grid>
     );
   };
 
   return (
     <ThemeProvider theme={theme}>
-      <Box sx={{ p: 3, minHeight: '100vh', background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)' }}>
-        <Paper sx={{ p: 3, mb: 3, borderRadius: 2 }}>
-          <Typography variant="h5" sx={{ fontWeight: 700, mb: 2 }}>
-            Stage Allocation
-          </Typography>
-          
-          <Snackbar
-            open={showMessage}
-            autoHideDuration={6000}
-            onClose={() => setShowMessage(false)}
-            anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
-          >
-            <Alert 
-              onClose={() => setShowMessage(false)} 
-              severity={message.type} 
-              variant="filled"
-              sx={{ width: '100%' }}
-            >
-              {message.text}
-            </Alert>
-          </Snackbar>
-
-          {/* Forane Selection */}
-          <Grid container spacing={3} sx={{ mb: 3 }}>
-            <Grid item xs={12} md={6}>
-              <FormControl fullWidth>
-                <InputLabel>Select Forane</InputLabel>
-                <Select
-                  value={selectedForane}
-                  onChange={(e) => setSelectedForane(e.target.value)}
-                  label="Select Forane"
-                >
-                  <MenuItem value="">
-                    <em>None</em>
-                  </MenuItem>
-                  {foranes.map((forane) => (
-                    <MenuItem key={forane._id} value={forane._id}>
-                      {forane.name}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Grid>
-            
-            {selectedForane && (
-              <Grid item xs={12} md={6}>
-                <Paper elevation={1} sx={{ p: 2, height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                  <Box>
-                    <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 2 }}>
-                      Forane Details
-                    </Typography>
-                    <Grid container spacing={2}>
-                      <Grid item xs={6}>
-                        <Typography variant="body2" color="text.secondary">
-                          Total Venues
-                        </Typography>
-                        <Typography variant="h6">
-                          {venues.length}
-                        </Typography>
-                      </Grid>
-                      <Grid item xs={6}>
-                        <Typography variant="body2" color="text.secondary">
-                          Total Events
-                        </Typography>
-                        <Typography variant="h6">
-                          {events.length}
-                        </Typography>
-                      </Grid>
-                      <Grid item xs={6}>
-                        <Typography variant="body2" color="text.secondary">
-                          Allocated Events
-                        </Typography>
-                        <Typography variant="h6" color="primary">
-                          {allocations.reduce((total, alloc) => total + alloc.eventIds.length, 0)}
-                        </Typography>
-                      </Grid>
-                      <Grid item xs={6}>
-                        <Typography variant="body2" color="text.secondary">
-                          Unallocated Events
-                        </Typography>
-                        <Typography variant="h6" color="error">
-                          {getUnallocatedEvents().length}
-                        </Typography>
-                      </Grid>
-                    </Grid>
-                  </Box>
-                  <Divider sx={{ my: 2 }} />
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Tooltip title="Events distribution across venues">
-                      <Chip 
-                        label={`Utilization: ${venues.length > 0 
-                          ? ((allocations.reduce((total, alloc) => total + alloc.eventIds.length, 0) / events.length) * 100).toFixed(1) 
-                          : 0}%`} 
-                        color={
-                          allocations.reduce((total, alloc) => total + alloc.eventIds.length, 0) === events.length 
-                            ? 'success' 
-                            : 'warning'
-                        }
-                        variant="outlined"
-                      />
-                    </Tooltip>
-                    <Tooltip title="Total Venue Capacity">
-                      <Chip 
-                        label={`Total Capacity: ${venues.reduce((total, venue) => total + venue.capacity, 0)}`}
-                        color="secondary"
-                        variant="outlined"
-                      />
-                    </Tooltip>
-                  </Box>
-                </Paper>
-              </Grid>
-            )}
-          </Grid>
-
-          {/* Action Buttons */}
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
-            <Button
-              variant="contained"
-              startIcon={<SaveIcon />}
-              onClick={saveAllocations}
-              disabled={!selectedForane || isLoading}
-            >
-              Save Allocations
-            </Button>
-            <Box>
-              <Button
-                variant="outlined"
-                startIcon={<RefreshIcon />}
-                onClick={() => {
-                  fetchVenuesByForane();
-                  fetchAllocations();
-                  fetchParticipantCounts();
-                }}
-                disabled={!selectedForane || isLoading}
-                sx={{ mr: 1 }}
-              >
-                Refresh
-              </Button>
-              <Button
-                variant="outlined"
-                startIcon={<FileDownloadIcon />}
-                onClick={exportToPDF}
-                disabled={!selectedForane || !venues.length || !allocations.length}
-              >
-                Export to PDF
-              </Button>
-            </Box>
-          </Box>
-
-          {isLoading ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
-              <CircularProgress />
-            </Box>
-          ) : !selectedForane ? (
-            <Alert severity="info">
-              Please select a forane to begin stage allocation.
-            </Alert>
-          ) : venues.length === 0 ? (
-            <Alert severity="warning" sx={{ mb: 3 }}>
-              No venues found for this forane. Please add venues first.
-            </Alert>
-          ) : (
-            <Box sx={{ mb: 4 }}>
-              <Paper 
-                sx={{ 
-                  p: 2, 
-                  mb: 3,
-                  borderRadius: 2,
-                  border: '1px solid',
-                  borderColor: 'primary.light',
-                  bgcolor: 'primary.light',
-                  color: 'white'
-                }}
-              >
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                  <Typography variant="h6">
-                    Unallocated Events
+      <DashboardContainer>
+        <Container maxWidth="xl">
+          <Grid container spacing={3}>
+            {/* Header */}
+            <Grid item xs={12}>
+              <PageHeader>
+                <Box>
+                  <Typography variant="h4" sx={{ fontWeight: 700, color: '#1a202c', mb: 0.5 }}>
+                    Stage Allocation
                   </Typography>
-                  
-                  {/* Filter buttons display active filter count */}
-                  <Box sx={{ display: 'flex', gap: 1 }}>
-                    {(sectionFilter || eventNameFilter || showWithParticipantsOnly) && (
-                      <Button
-                        size="small"
-                        variant="outlined"
-                        startIcon={<ClearIcon />}
-                        onClick={clearFilters}
-                        sx={{ 
-                          bgcolor: 'white',
-                          '&:hover': {
-                            bgcolor: 'rgba(255, 255, 255, 0.8)'
-                          }
-                        }}
-                      >
-                        Clear Filters
-                      </Button>
-                    )}
-                    <Chip 
-                      icon={<FilterListIcon />}
-                      label={`Filters: ${(sectionFilter ? 1 : 0) + (eventNameFilter ? 1 : 0) + (showWithParticipantsOnly ? 1 : 0)}`}
-                      color="default"
-                      variant="outlined"
-                      sx={{ 
-                        bgcolor: 'white',
-                        fontWeight: 500
-                      }}
-                    />
-                  </Box>
+                  <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                    Drag and drop events to allocate them to venues
+                  </Typography>
                 </Box>
-                
-                {/* Filter controls */}
-                <Paper sx={{ p: 2, mb: 2, borderRadius: 1 }}>
-                  <Grid container spacing={2} alignItems="center">
-                    <Grid item xs={12} sm={4}>
-                      <FormControl fullWidth size="small" variant="outlined">
-                        <InputLabel>Section</InputLabel>
-                        <Select
-                          value={sectionFilter}
-                          onChange={(e) => setSectionFilter(e.target.value)}
-                          label="Section"
-                        >
-                          <MenuItem value="">
-                            <em>All Sections</em>
-                          </MenuItem>
-                          {availableSections.map((section) => (
-                            <MenuItem key={section} value={section}>
-                              {section}
-                            </MenuItem>
-                          ))}
-                        </Select>
-                      </FormControl>
-                    </Grid>
-                    <Grid item xs={12} sm={4}>
-                      <TextField
-                        fullWidth
-                        size="small"
-                        label="Search by Event Name"
-                        variant="outlined"
-                        value={eventNameFilter}
-                        onChange={(e) => setEventNameFilter(e.target.value)}
-                        InputProps={{
-                          endAdornment: eventNameFilter && (
-                            <IconButton
-                              size="small"
-                              onClick={() => setEventNameFilter('')}
-                              edge="end"
-                            >
-                              <ClearIcon fontSize="small" />
-                            </IconButton>
-                          )
-                        }}
-                      />
-                    </Grid>
-                    <Grid item xs={12} sm={2}>
-                      <FormControlLabel
-                        control={
-                          <Switch
-                            checked={showWithParticipantsOnly}
-                            onChange={(e) => setShowWithParticipantsOnly(e.target.checked)}
-                            color="primary"
-                          />
-                        }
-                        label="With Participants"
-                        sx={{ 
-                          '& .MuiFormControlLabel-label': { 
-                            color: 'black',
-                            fontSize: '0.875rem'
-                          }
-                        }}
-                      />
-                    </Grid>
-                    <Grid item xs={12} sm={2}>
-                      <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
-                        <Chip 
-                          label={`${getUnallocatedEvents().length} events`}
-                          color="primary"
-                          sx={{ bgcolor: 'white' }}
-                        />
-                      </Box>
-                    </Grid>
-                  </Grid>
-                </Paper>
-                
-                <Box
-                  onDragOver={handleDragOver}
-                  onDrop={handleDropToUnallocated}
-                  sx={{ 
-                    display: 'flex', 
-                    flexWrap: 'wrap',
-                    gap: 2,
-                    p: 2,
-                    bgcolor: 'white',
-                    borderRadius: 1,
-                    minHeight: 100,
-                    maxHeight: '400px',
-                    overflowY: 'auto',
-                    fontSize: '8px'
-                  }}
-                >
-                  {getUnallocatedEvents().length > 0 ? (
-                    getUnallocatedEvents().map((event, index) => {
-                      const minutes = getEventMinutes(event);
-                      const participantCount = getEventParticipantCount(event._id);
-                      return (
-                        <Paper
-                          key={event._id}
-                          draggable
-                          onDragStart={(e) => handleDragStart(e, event._id, 'unallocated', index)}
-                          elevation={draggedEvent === event._id ? 6 : 1}
-                          sx={{ 
-                            p: 2,
-                            borderLeft: '4px solid',
-                            borderLeftColor: event.gender === 'male' ? '#2563EB' : 
-                                            event.gender === 'female' ? '#DB2777' : '#059669',
-                            bgcolor: draggedEvent === event._id ? 'rgba(37, 99, 235, 0.05)' : 'white',
-                            width: 'auto',
-                            minWidth: 200,
-                            cursor: 'grab',
-                            '&:active': {
-                              cursor: 'grabbing'
-                            }
-                          }}
-                        >
-                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <Typography variant="subtitle1" sx={{ fontWeight: 500, color: 'text.primary', fontSize: 15 }}>
-                              {event.section}-{event.eventName} 
-                            </Typography>
-                            <Box sx={{ display: 'flex', gap: 1 }}>
-                              {minutes && (
-                                <Chip
-                                  size="small"
-                                  icon={<TimerIcon />}
-                                  label={`${minutes} mins`}
-                                  color="default"
-                                  variant="outlined"
-                                  sx={{ height: 24 }}
-                                />
-                              )}
-                              <Chip
-                                size="small"
-                                icon={<PeopleIcon />}
-                                label={participantCount}
-                                color={participantCount > 0 ? "secondary" : "default"}
-                                variant="outlined"
-                                sx={{ height: 24 }}
-                              />
-                            </Box>
-                          </Box>
-                          <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
-                            <Chip 
-                              size="small" 
-                              label={event.gender === 'male' ? 'Boys' : 
-                                    event.gender === 'female' ? 'Girls' : 'Mixed'} 
-                              color={event.gender === 'male' ? 'primary' : 
-                                    event.gender === 'female' ? 'error' : 'success'}
-                              variant="outlined"
-                            />
-                            <Chip 
-                              size="small" 
-                              label={event.eventType === 'single' ? 'Single' : 'Group'} 
-                              color="secondary"
-                              variant="outlined"
-                            />
-                          </Box>
-                        </Paper>
-                      );
-                    })
-                  ) : (
-                    <Box sx={{ 
-                      display: 'flex', 
-                      justifyContent: 'center', 
-                      alignItems: 'center',
-                      width: '100%',
-                      color: 'text.secondary'
-                    }}>
-                      {(sectionFilter || eventNameFilter || showWithParticipantsOnly) ? (
-                        <Typography>No events match the current filters</Typography>
-                      ) : (
-                        <Typography>All events have been allocated</Typography>
-                      )}
-                    </Box>
+                <Box sx={{ display: 'flex', gap: 1.5 }}>
+                  {selectedForane && (
+                    <>
+                      <Button variant="outlined" startIcon={<Download size={18} />}
+                        onClick={exportToPDF} disabled={!venues.length || !allocations.length}
+                        sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 600 }}>
+                        Export PDF
+                      </Button>
+                      <Button variant="contained" startIcon={<Save size={18} />}
+                        onClick={saveAllocations} disabled={isLoading}
+                        sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 600, boxShadow: '0 2px 8px rgba(37,99,235,0.3)' }}>
+                        Save
+                      </Button>
+                    </>
                   )}
                 </Box>
-              </Paper>
+              </PageHeader>
+            </Grid>
 
-              <Typography variant="h6" sx={{ mb: 2 }}>
-                Venues & Allocated Events
-              </Typography>
-              <Typography variant="body2" sx={{ mb: 3, color: 'text.secondary', display: 'flex', alignItems: 'center' }}>
-                <InfoIcon sx={{ mr: 1 }} />
-                Drag and drop events to allocate them to venues. You can also reorder events within venues.
-              </Typography>
-              
-              <Grid container spacing={3}>
-                {venues.map(venue => renderVenueCard(venue))}
+            <Snackbar open={showMessage} autoHideDuration={6000}
+              onClose={() => setShowMessage(false)} anchorOrigin={{ vertical: 'top', horizontal: 'center' }}>
+              <Alert onClose={() => setShowMessage(false)} severity={message.type} variant="filled"
+                sx={{ width: '100%', borderRadius: 2 }}>{message.text}</Alert>
+            </Snackbar>
+
+            {/* Forane Selector */}
+            <Grid item xs={12} sm={6} md={4}>
+              <StyledCard>
+                <StyledCardContent>
+                  <FormControl fullWidth>
+                    <InputLabel>Select Forane</InputLabel>
+                    <Select value={selectedForane} label="Select Forane"
+                      onChange={(e) => setSelectedForane(e.target.value)}>
+                      <MenuItem value=""><em>Select Forane</em></MenuItem>
+                      {foranes.map(f => <MenuItem key={f._id} value={f._id}>{f.name}</MenuItem>)}
+                    </Select>
+                  </FormControl>
+                </StyledCardContent>
+              </StyledCard>
+            </Grid>
+
+            {/* Stat Cards */}
+            {selectedForane && !isLoading && statisticsCards.map((stat, i) => (
+              <Grid item xs={12} sm={6} md={4} key={i}>
+                <StyledCard>
+                  <StyledCardContent>
+                    <StatWrapper>
+                      <Box>
+                        <Typography variant="subtitle1" sx={{
+                          color: 'text.secondary', fontSize: '0.875rem', fontWeight: 600,
+                          textTransform: 'uppercase', letterSpacing: '0.1em'
+                        }}>{stat.title}</Typography>
+                        <StatValue>{stat.value}</StatValue>
+                      </Box>
+                      <IconBox color={stat.color}>{stat.icon}</IconBox>
+                    </StatWrapper>
+                  </StyledCardContent>
+                </StyledCard>
               </Grid>
-            </Box>
-          )}
-        </Paper>
-      </Box>
+            ))}
+
+            {isLoading ? (
+              <Grid item xs={12}>
+                <Box sx={{ display: 'flex', justifyContent: 'center', p: 5 }}><CircularProgress /></Box>
+              </Grid>
+            ) : !selectedForane ? (
+              <Grid item xs={12}>
+                <ChartCard>
+                  <Box sx={{ textAlign: 'center', py: 5 }}>
+                    <MapPin size={48} style={{ color: '#94a3b8', marginBottom: 16 }} />
+                    <Typography color="textSecondary" sx={{ fontSize: '1.05rem' }}>
+                      Select a forane to begin stage allocation
+                    </Typography>
+                  </Box>
+                </ChartCard>
+              </Grid>
+            ) : (
+              <>
+                {/* Unallocated Events */}
+                <Grid item xs={12}>
+                  <ChartCard>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, flexWrap: 'wrap', gap: 2 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                        <Typography variant="h6" sx={{ fontWeight: 600, color: '#1a202c' }}>
+                          Unallocated Events
+                        </Typography>
+                        <Chip label={`${unallocatedEvents.length} events`} size="small" sx={{
+                          bgcolor: '#2563EB15', color: '#2563EB', border: '1px solid #2563EB30', fontWeight: 600
+                        }} />
+                      </Box>
+                      <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
+                        <TextField size="small" label="Search Event" value={eventNameFilter}
+                          onChange={(e) => setEventNameFilter(e.target.value)} sx={{ minWidth: 160 }}
+                          InputProps={{
+                            endAdornment: eventNameFilter && (
+                              <IconButton size="small" onClick={() => setEventNameFilter('')}><X size={14} /></IconButton>
+                            )
+                          }} />
+                        <FormControl size="small" sx={{ minWidth: 140 }}>
+                          <InputLabel>Section</InputLabel>
+                          <Select value={sectionFilter} label="Section"
+                            onChange={(e) => setSectionFilter(e.target.value)}>
+                            <MenuItem value=""><em>All</em></MenuItem>
+                            {availableSections.map(s => <MenuItem key={s} value={s}>{s}</MenuItem>)}
+                          </Select>
+                        </FormControl>
+                        <FormControlLabel
+                          control={<Switch checked={showWithParticipantsOnly} size="small"
+                            onChange={(e) => setShowWithParticipantsOnly(e.target.checked)} />}
+                          label={<Typography variant="body2" sx={{ fontSize: '0.8rem' }}>With Participants</Typography>}
+                        />
+                        {(sectionFilter || eventNameFilter || showWithParticipantsOnly) && (
+                          <Button size="small" variant="outlined" onClick={clearFilters}
+                            startIcon={<X size={14} />}
+                            sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 600 }}>
+                            Clear
+                          </Button>
+                        )}
+                      </Box>
+                    </Box>
+
+                    <Box
+                      onDragOver={handleDragOver}
+                      onDrop={handleDropToUnallocated}
+                      sx={{
+                        display: 'flex', flexWrap: 'wrap', gap: 1.5, p: 2.5,
+                        bgcolor: 'rgba(0,0,0,0.02)', borderRadius: 3,
+                        border: '1px solid rgba(0,0,0,0.06)',
+                        minHeight: 100, maxHeight: 400, overflowY: 'auto'
+                      }}
+                    >
+                      {unallocatedEvents.length > 0 ? (
+                        unallocatedEvents.map((event, i) => renderEventCard(event, 'unallocated', i, false, 0))
+                      ) : (
+                        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', width: '100%', py: 3 }}>
+                          <Typography color="textSecondary">
+                            {(sectionFilter || eventNameFilter || showWithParticipantsOnly)
+                              ? 'No events match the current filters'
+                              : 'All events have been allocated'}
+                          </Typography>
+                        </Box>
+                      )}
+                    </Box>
+                  </ChartCard>
+                </Grid>
+
+                {/* Venues */}
+                <Grid item xs={12}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+                    <Typography variant="h6" sx={{ fontWeight: 600, color: '#1a202c' }}>
+                      Venues & Allocated Events
+                    </Typography>
+                    <Typography variant="body2" sx={{ color: '#94a3b8', display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                      <Info size={14} /> Drag and drop to reorder
+                    </Typography>
+                  </Box>
+                  <Grid container spacing={3}>
+                    {venues.map(venue => renderVenueCard(venue))}
+                  </Grid>
+                </Grid>
+              </>
+            )}
+          </Grid>
+        </Container>
+      </DashboardContainer>
     </ThemeProvider>
   );
 };
