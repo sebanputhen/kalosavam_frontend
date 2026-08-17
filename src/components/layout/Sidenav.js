@@ -131,43 +131,43 @@ const menuItems = [
     ]
   },
   ,
-  {
-    type: 'header',
-    label: 'STUDENTS PROFILE',
-    fold: true,
-    items: [
-      {
-        type: 'single',
-        path: '/Student',
-        label: 'Manage Students',
-        icon: '🏢',
-      },
-      {
-        type: 'single',
-        path: '/Parish',
-        label: 'Manage Parish',
-        icon: '⛪',
-      },
-      {
-        type: 'single',
-        path: '/PersonManagement',
-        label: 'Manage Category',
-        icon: '🏷️',
-      },
-      {
-        type: 'single',
-        path: '/Family',
-        label: 'Manage Event',
-        icon: '🎉',
-      }, 
-      {
-        type: 'single',
-        path: '/FinanceSettings',
-        label: 'Manage Venue',
-        icon: '🏟️',
-      }
-    ]
-  },
+  // {
+  //   type: 'header',
+  //   label: 'STUDENTS PROFILE',
+  //   fold: true,
+  //   items: [
+  //     {
+  //       type: 'single',
+  //       path: '/Student',
+  //       label: 'Manage Students',
+  //       icon: '🏢',
+  //     },
+  //     {
+  //       type: 'single',
+  //       path: '/Parish',
+  //       label: 'Manage Parish',
+  //       icon: '⛪',
+  //     },
+  //     {
+  //       type: 'single',
+  //       path: '/PersonManagement',
+  //       label: 'Manage Category',
+  //       icon: '🏷️',
+  //     },
+  //     {
+  //       type: 'single',
+  //       path: '/Family',
+  //       label: 'Manage Event',
+  //       icon: '🎉',
+  //     }, 
+  //     {
+  //       type: 'single',
+  //       path: '/FinanceSettings',
+  //       label: 'Manage Venue',
+  //       icon: '🏟️',
+  //     }
+  //   ]
+  // },
   {
     type: 'header',
     label: 'REGISTRATION',
@@ -195,7 +195,7 @@ const menuItems = [
   },
   {
     type: 'header',
-    label: 'JUDGE',
+    label: 'OFFICE',
     fold: true,
     items: [
       {
@@ -227,6 +227,24 @@ const menuItems = [
         path: '/addopening',
         label: 'Venue Based  List',
         icon: '📍',
+      }
+      ,{
+        type: 'single',
+        path: '/participantList',
+        label: 'Participant List',
+        icon: '📋',
+      },
+      {
+        type: 'single',
+        path: '/registration-numbers',
+        label: 'Registration Numbers',
+        icon: '🔢',
+      },
+      {
+        type: 'single',
+        path: '/resultsDashboard',
+        label: 'Results Dashboard',
+        icon: '📊',
       }
     ]
   }
