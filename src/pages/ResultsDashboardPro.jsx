@@ -2,10 +2,11 @@ import React, { useState, useEffect, useMemo } from 'react';
 import {
   Box, Container, Typography, Grid, Select, MenuItem, FormControl, InputLabel,
   Table, TableBody, TableHead, TableRow, TableCell, TableContainer,
-  CircularProgress, Chip, Button, IconButton, TextField, InputAdornment, Paper, Card, CardContent
+  CircularProgress, Chip, Button, IconButton, TextField, InputAdornment, Paper, Card, CardContent,
+  Dialog, DialogTitle, DialogContent, DialogActions
 } from '@mui/material';
 import { createTheme, ThemeProvider, styled } from '@mui/material/styles';
-import { Award, Users, Target, BarChart3, RefreshCw, Trophy, MapPin, Layers, Music, Search, Filter, Grid3x3 } from 'lucide-react';
+import { Award, Users, Target, BarChart3, RefreshCw, Trophy, MapPin, Layers, Music, Search, Filter, Grid3x3, X } from 'lucide-react';
 import axiosInstance from "../axiosConfig";
 
 const theme = createTheme({
@@ -85,6 +86,9 @@ const tableStyles = {
   '& td': { color: '#1E293B', borderBottom: '1px solid #F1F5F9', py: 1.3 }
 };
 
+const POSITION_EMOJI = { '1': '🥇', '2': '🥈', '3': '🥉' };
+const POSITION_LABEL = { '1': 'First', '2': 'Second', '3': 'Third' };
+
 const ResultsDashboardPro = () => {
   const [activeView, setActiveView] = useState('overview');
   const [selectedSection, setSelectedSection] = useState('');
@@ -98,6 +102,10 @@ const ResultsDashboardPro = () => {
   const [events, setEvents] = useState([]);
   const [parishes, setParishes] = useState([]);
   const [stageAllocation, setStageAllocation] = useState(null);
+
+  // Parish detail modal state
+  const [parishModalOpen, setParishModalOpen] = useState(false);
+  const [selectedParishName, setSelectedParishName] = useState('');
 
   useEffect(() => { fetchAllData(); }, []);
 
@@ -236,6 +244,86 @@ const ResultsDashboardPro = () => {
     return stageAllocation.venues.filter(v => v.venueId).map(v => ({ id: v.venueId._id, name: v.venueId.name || 'Unknown' }));
   }, [stageAllocation]);
 
+  // ====== PARISH DETAIL DATA ======
+  const parishDetailData = useMemo(() => {
+    if (!selectedParishName) return null;
+    const results = allResults.filter(r => r.parish === selectedParishName);
+    const division = parishDivisionMap[selectedParishName] || 'C';
+    const families = parishFamilyMap[selectedParishName] || 0;
+    const dc = getDivConfig(division);
+
+    let totalPoints = 0, firsts = 0, seconds = 0, thirds = 0, gradeA = 0, gradeB = 0, gradeC = 0;
+    const prizeList = [];
+    const sectionPoints = {};
+
+    results.forEach(r => {
+      totalPoints += r.totalPoints || 0;
+      if (r.position === '1') firsts++;
+      else if (r.position === '2') seconds++;
+      else if (r.position === '3') thirds++;
+      if (r.grade === 'A') gradeA++;
+      else if (r.grade === 'B') gradeB++;
+      else if (r.grade === 'C') gradeC++;
+
+      if (!sectionPoints[r.section]) sectionPoints[r.section] = 0;
+      sectionPoints[r.section] += r.totalPoints || 0;
+
+      if (r.position && ['1', '2', '3'].includes(r.position)) {
+        prizeList.push({
+          eventName: r.eventName,
+          section: r.section,
+          eventType: r.eventType,
+          position: r.position,
+          participantName: r.participantType === 'Group' ? 'Group' : (r.participantName || '—'),
+          grade: r.grade,
+          totalPoints: r.totalPoints || 0,
+        });
+      }
+    });
+
+    prizeList.sort((a, b) => +a.position - +b.position || a.section.localeCompare(b.section) || a.eventName.localeCompare(b.eventName));
+
+    // Also include graded (non-prize) entries
+    const gradedList = results.filter(r => !r.position || !['1', '2', '3'].includes(r.position)).map(r => ({
+      eventName: r.eventName,
+      section: r.section,
+      eventType: r.eventType,
+      participantName: r.participantType === 'Group' ? 'Group' : (r.participantName || '—'),
+      grade: r.grade,
+      totalPoints: r.totalPoints || 0,
+    })).sort((a, b) => a.section.localeCompare(b.section) || a.eventName.localeCompare(b.eventName));
+
+    return { division, families, dc, totalPoints, firsts, seconds, thirds, gradeA, gradeB, gradeC, prizeList, gradedList, sectionPoints, totalEntries: results.length };
+  }, [selectedParishName, allResults, parishDivisionMap, parishFamilyMap]);
+
+  const openParishModal = (parishName) => {
+    setSelectedParishName(parishName);
+    setParishModalOpen(true);
+  };
+
+  const closeParishModal = () => {
+    setParishModalOpen(false);
+    setSelectedParishName('');
+  };
+
+  // Clickable parish name component
+  const ParishName = ({ name, sx = {} }) => (
+    <Typography
+      component="span"
+      onClick={(e) => { e.stopPropagation(); openParishModal(name); }}
+      sx={{
+        cursor: 'pointer',
+        fontWeight: 'inherit',
+        fontSize: 'inherit',
+        color: 'inherit',
+        '&:hover': { color: '#2563EB', textDecoration: 'underline' },
+        ...sx,
+      }}
+    >
+      {name}
+    </Typography>
+  );
+
   const maxPoints = parishStandings[0]?.totalPoints || 1;
   const totalEvents_n = events.length;
   const scoredEventsCount = scorings.length;
@@ -346,13 +434,13 @@ const ResultsDashboardPro = () => {
             <IconBox color={conf.color} sx={{ width: 36, height: 36, borderRadius: 10 }}><Layers size={18} /></IconBox>
             <Box><Typography sx={{ fontWeight: 700, fontSize: '16px', color: '#1a202c' }}>{conf.label}</Typography><Typography sx={{ fontSize: '11px', color: '#94A3B8' }}>{conf.desc} · {standings.length} parishes</Typography></Box>
           </Box>
-          {top3[0] && <Box display="flex" alignItems="center" gap={1}><Trophy size={16} color={conf.color} /><Typography sx={{ fontWeight: 700, fontSize: '14px', color: conf.color }}>{top3[0].parish}</Typography></Box>}
+          {top3[0] && <Box display="flex" alignItems="center" gap={1}><Trophy size={16} color={conf.color} /><ParishName name={top3[0].parish} sx={{ fontWeight: 700, fontSize: '14px', color: conf.color }} /></Box>}
         </Box>
         {top3.length > 0 && (
           <Box sx={{ p: 2, borderBottom: '1px solid rgba(0,0,0,0.04)' }}>
             <Grid container spacing={1.5}>{top3.map((p, idx) => (
               <Grid item xs={4} key={p.parish}>
-                <Box sx={{ textAlign: 'center', p: 1.5, borderRadius: 3, background: idx === 0 ? `${conf.color}08` : 'rgba(0,0,0,0.02)', border: idx === 0 ? `1px solid ${conf.color}25` : '1px solid rgba(0,0,0,0.04)' }}>
+                <Box onClick={() => openParishModal(p.parish)} sx={{ textAlign: 'center', p: 1.5, borderRadius: 3, cursor: 'pointer', background: idx === 0 ? `${conf.color}08` : 'rgba(0,0,0,0.02)', border: idx === 0 ? `1px solid ${conf.color}25` : '1px solid rgba(0,0,0,0.04)', '&:hover': { borderColor: conf.color, background: `${conf.color}10` } }}>
                   <Typography sx={{ fontSize: '20px', mb: 0.3 }}>{['🥇', '🥈', '🥉'][idx]}</Typography>
                   <Typography sx={{ fontWeight: 700, fontSize: '13px', color: '#1a202c' }}>{p.parish}</Typography>
                   <Typography sx={{ fontWeight: 800, fontSize: '20px', color: conf.color }}>{p.totalPoints}</Typography>
@@ -367,7 +455,7 @@ const ResultsDashboardPro = () => {
           return (
             <Box key={p.parish} sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 0.8 }}>
               <Typography sx={{ width: 22, fontWeight: 700, fontSize: '12px', color: idx < 3 ? conf.color : '#94A3B8', textAlign: 'right' }}>{idx + 1}</Typography>
-              <Typography sx={{ width: 130, fontWeight: idx < 3 ? 700 : 500, fontSize: '12px', color: '#1a202c', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.parish}</Typography>
+              <ParishName name={p.parish} sx={{ width: 130, fontWeight: idx < 3 ? 700 : 500, fontSize: '12px', color: '#1a202c', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }} />
               <Box sx={{ flex: 1, height: 20, background: 'rgba(0,0,0,0.04)', borderRadius: '3px', overflow: 'hidden', position: 'relative' }}>
                 <Box sx={{ width: `${pct}%`, height: '100%', borderRadius: '3px', background: idx < 3 ? conf.color : '#CBD5E1', transition: 'width 0.8s', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', pr: 0.8 }}>
                   {pct > 25 && <Typography sx={{ fontSize: '10px', fontWeight: 700, color: '#fff' }}>{p.totalPoints}</Typography>}
@@ -399,9 +487,165 @@ const ResultsDashboardPro = () => {
         <TableCell><Chip label={event.eventType === 'group' ? 'Group' : 'Individual'} size="small" sx={{ bgcolor: event.eventType === 'group' ? '#FDF2F8' : '#ECFDF5', color: event.eventType === 'group' ? '#EC4899' : '#059669', fontSize: '11px', fontWeight: 600 }} /></TableCell>
         <TableCell><Chip label={event.gender === 'male' ? 'Boys' : event.gender === 'female' ? 'Girls' : 'All'} size="small" sx={{ fontSize: '11px', fontWeight: 600, bgcolor: event.gender === 'male' ? '#EFF6FF' : event.gender === 'female' ? '#FDF2F8' : '#F1F5F9', color: event.gender === 'male' ? '#2563EB' : event.gender === 'female' ? '#EC4899' : '#64748B' }} /></TableCell>
         {['1', '2', '3'].map(pos => { const wn = w(pos); return (
-          <TableCell key={pos} align="center">{wn ? (<Box><Typography sx={{ fontWeight: 700, fontSize: '13px', color: '#1a202c' }}>{wn.name}</Typography><Typography sx={{ fontSize: '11px', color: '#94A3B8' }}>{wn.parish}</Typography></Box>) : <Typography sx={{ color: '#E2E8F0' }}>—</Typography>}</TableCell>
+          <TableCell key={pos} align="center">{wn ? (<Box><Typography sx={{ fontWeight: 700, fontSize: '13px', color: '#1a202c' }}>{wn.name}</Typography><ParishName name={wn.parish} sx={{ fontSize: '11px', color: '#94A3B8' }} /></Box>) : <Typography sx={{ color: '#E2E8F0' }}>—</Typography>}</TableCell>
         ); })}
       </TableRow>
+    );
+  };
+
+  // ====== PARISH DETAIL MODAL ======
+  const ParishDetailModal = () => {
+    if (!parishDetailData) return null;
+    const d = parishDetailData;
+    return (
+      <Dialog open={parishModalOpen} onClose={closeParishModal} maxWidth="md" fullWidth
+        PaperProps={{ sx: { borderRadius: 4, maxHeight: '90vh' } }}>
+        <DialogTitle sx={{ p: 0 }}>
+          <Box sx={{ background: `linear-gradient(135deg, ${d.dc.color} 0%, ${d.dc.color}CC 100%)`, p: 3, color: '#fff', position: 'relative' }}>
+            <IconButton onClick={closeParishModal} sx={{ position: 'absolute', right: 12, top: 12, color: '#fff', bgcolor: 'rgba(255,255,255,0.15)', '&:hover': { bgcolor: 'rgba(255,255,255,0.25)' } }}><X size={18} /></IconButton>
+            <Typography sx={{ fontWeight: 900, fontSize: '24px' }}>{selectedParishName}</Typography>
+            <Box display="flex" gap={2} mt={1} flexWrap="wrap">
+              <Chip label={d.dc.label} size="small" sx={{ bgcolor: 'rgba(255,255,255,0.2)', color: '#fff', fontWeight: 700 }} />
+              {d.families > 0 && <Typography sx={{ fontSize: '13px', opacity: 0.9 }}>{d.families} Families</Typography>}
+            </Box>
+            {/* Summary stats row */}
+            <Box display="flex" gap={3} mt={2} flexWrap="wrap">
+              <Box sx={{ textAlign: 'center' }}>
+                <Typography sx={{ fontWeight: 900, fontSize: '28px' }}>{d.totalPoints}</Typography>
+                <Typography sx={{ fontSize: '11px', opacity: 0.8 }}>Total Points</Typography>
+              </Box>
+              <Box sx={{ textAlign: 'center' }}>
+                <Typography sx={{ fontWeight: 900, fontSize: '28px' }}>{d.firsts + d.seconds + d.thirds}</Typography>
+                <Typography sx={{ fontSize: '11px', opacity: 0.8 }}>Medals</Typography>
+              </Box>
+              <Box sx={{ textAlign: 'center' }}>
+                <Typography sx={{ fontWeight: 900, fontSize: '28px' }}>{d.totalEntries}</Typography>
+                <Typography sx={{ fontSize: '11px', opacity: 0.8 }}>Entries</Typography>
+              </Box>
+              <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center', ml: 'auto' }}>
+                {d.firsts > 0 && <Typography sx={{ fontSize: '16px' }}>🥇 {d.firsts}</Typography>}
+                {d.seconds > 0 && <Typography sx={{ fontSize: '16px' }}>🥈 {d.seconds}</Typography>}
+                {d.thirds > 0 && <Typography sx={{ fontSize: '16px' }}>🥉 {d.thirds}</Typography>}
+              </Box>
+            </Box>
+          </Box>
+        </DialogTitle>
+        <DialogContent sx={{ p: 0 }}>
+          {/* Grade summary & section breakdown */}
+          <Box sx={{ p: 2.5, borderBottom: '1px solid rgba(0,0,0,0.06)', display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+            <Box display="flex" gap={1}>
+              <Chip label={`Grade A: ${d.gradeA}`} size="small" sx={{ bgcolor: '#ECFDF5', color: '#059669', fontWeight: 700 }} />
+              <Chip label={`Grade B: ${d.gradeB}`} size="small" sx={{ bgcolor: '#EFF6FF', color: '#2563EB', fontWeight: 700 }} />
+              <Chip label={`Grade C: ${d.gradeC}`} size="small" sx={{ bgcolor: '#FFFBEB', color: '#D97706', fontWeight: 700 }} />
+            </Box>
+            <Box sx={{ ml: 'auto', display: 'flex', gap: 1.5, flexWrap: 'wrap' }}>
+              {Object.entries(d.sectionPoints).sort((a, b) => b[1] - a[1]).map(([sec, pts]) => (
+                <Typography key={sec} sx={{ fontSize: '12px', color: '#64748B' }}><strong>{sec}:</strong> {pts} pts</Typography>
+              ))}
+            </Box>
+          </Box>
+
+          {/* Prize Winners Table */}
+          {d.prizeList.length > 0 && (
+            <Box sx={{ p: 2.5 }}>
+              <Typography sx={{ fontWeight: 700, fontSize: '15px', color: '#1a202c', mb: 1.5, display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Trophy size={18} color="#D97706" /> Prize Winners ({d.prizeList.length})
+              </Typography>
+              <TableContainer sx={{ borderRadius: 2, border: '1px solid rgba(0,0,0,0.06)' }}>
+                <Table size="small" sx={tableStyles}>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell width={40}>#</TableCell>
+                      <TableCell>Event</TableCell>
+                      <TableCell>Section</TableCell>
+                      <TableCell>Type</TableCell>
+                      <TableCell align="center">Position</TableCell>
+                      <TableCell>Participant</TableCell>
+                      <TableCell align="center">Grade</TableCell>
+                      <TableCell align="right">Points</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {d.prizeList.map((r, idx) => (
+                      <TableRow key={idx} sx={{ '&:hover': { background: 'rgba(0,0,0,0.02)' } }}>
+                        <TableCell sx={{ color: '#94A3B8' }}>{idx + 1}</TableCell>
+                        <TableCell sx={{ fontWeight: 600 }}>{r.eventName}</TableCell>
+                        <TableCell><Chip label={r.section} size="small" sx={{ bgcolor: '#EFF6FF', color: '#2563EB', fontSize: '11px', fontWeight: 600 }} /></TableCell>
+                        <TableCell><Chip label={r.eventType === 'group' ? 'Group' : 'Individual'} size="small" sx={{ bgcolor: r.eventType === 'group' ? '#FDF2F8' : '#ECFDF5', color: r.eventType === 'group' ? '#EC4899' : '#059669', fontSize: '11px', fontWeight: 600 }} /></TableCell>
+                        <TableCell align="center">
+                          <Box display="flex" alignItems="center" justifyContent="center" gap={0.5}>
+                            <Typography sx={{ fontSize: '16px' }}>{POSITION_EMOJI[r.position]}</Typography>
+                            <Typography sx={{ fontWeight: 700, fontSize: '12px', color: '#1a202c' }}>{POSITION_LABEL[r.position]}</Typography>
+                          </Box>
+                        </TableCell>
+                        <TableCell sx={{ fontWeight: 500 }}>{r.participantName}</TableCell>
+                        <TableCell align="center">
+                          <Chip label={r.grade || '—'} size="small" sx={{
+                            fontWeight: 700, minWidth: 28,
+                            bgcolor: r.grade === 'A' ? '#ECFDF5' : r.grade === 'B' ? '#EFF6FF' : '#FFFBEB',
+                            color: r.grade === 'A' ? '#059669' : r.grade === 'B' ? '#2563EB' : '#D97706',
+                          }} />
+                        </TableCell>
+                        <TableCell align="right" sx={{ fontWeight: 700, color: '#2563EB' }}>{r.totalPoints}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </Box>
+          )}
+
+          {/* Other Graded Entries */}
+          {d.gradedList.length > 0 && (
+            <Box sx={{ p: 2.5, pt: 0 }}>
+              <Typography sx={{ fontWeight: 700, fontSize: '15px', color: '#1a202c', mb: 1.5, display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Award size={18} color="#6366F1" /> Other Entries ({d.gradedList.length})
+              </Typography>
+              <TableContainer sx={{ borderRadius: 2, border: '1px solid rgba(0,0,0,0.06)' }}>
+                <Table size="small" sx={tableStyles}>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell width={40}>#</TableCell>
+                      <TableCell>Event</TableCell>
+                      <TableCell>Section</TableCell>
+                      <TableCell>Participant</TableCell>
+                      <TableCell align="center">Grade</TableCell>
+                      <TableCell align="right">Points</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {d.gradedList.map((r, idx) => (
+                      <TableRow key={idx} sx={{ '&:hover': { background: 'rgba(0,0,0,0.02)' } }}>
+                        <TableCell sx={{ color: '#94A3B8' }}>{idx + 1}</TableCell>
+                        <TableCell sx={{ fontWeight: 500 }}>{r.eventName}</TableCell>
+                        <TableCell><Chip label={r.section} size="small" sx={{ bgcolor: '#EFF6FF', color: '#2563EB', fontSize: '11px', fontWeight: 600 }} /></TableCell>
+                        <TableCell>{r.participantName}</TableCell>
+                        <TableCell align="center">
+                          <Chip label={r.grade || '—'} size="small" sx={{
+                            fontWeight: 700, minWidth: 28,
+                            bgcolor: r.grade === 'A' ? '#ECFDF5' : r.grade === 'B' ? '#EFF6FF' : '#FFFBEB',
+                            color: r.grade === 'A' ? '#059669' : r.grade === 'B' ? '#2563EB' : '#D97706',
+                          }} />
+                        </TableCell>
+                        <TableCell align="right" sx={{ fontWeight: 600 }}>{r.totalPoints}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </Box>
+          )}
+
+          {d.prizeList.length === 0 && d.gradedList.length === 0 && (
+            <Box sx={{ textAlign: 'center', py: 6 }}>
+              <Typography sx={{ color: '#94A3B8', fontSize: '15px' }}>No results recorded yet for this parish.</Typography>
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ p: 2, borderTop: '1px solid rgba(0,0,0,0.06)' }}>
+          <Button onClick={closeParishModal} sx={{ textTransform: 'none', fontWeight: 600, borderRadius: 2 }}>Close</Button>
+        </DialogActions>
+      </Dialog>
     );
   };
 
@@ -502,7 +746,7 @@ const ResultsDashboardPro = () => {
                         return (
                           <Box key={p.parish} sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1 }}>
                             <Typography sx={{ width: 22, fontWeight: 700, fontSize: '12px', color: idx < 3 ? '#2563EB' : '#94A3B8', textAlign: 'right' }}>{idx + 1}</Typography>
-                            <Typography sx={{ width: 130, fontWeight: idx < 3 ? 700 : 500, fontSize: '13px', color: '#1a202c', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.parish}</Typography>
+                            <ParishName name={p.parish} sx={{ width: 130, fontWeight: idx < 3 ? 700 : 500, fontSize: '13px', color: '#1a202c', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }} />
                             <Chip label={dc.label.replace('Division ', '')} size="small" sx={{ fontWeight: 700, fontSize: '10px', bgcolor: `${dc.color}12`, color: dc.color, height: 20, minWidth: 24 }} />
                             <Box sx={{ flex: 1, height: 24, background: 'rgba(0,0,0,0.04)', borderRadius: '6px', overflow: 'hidden', position: 'relative' }}>
                               <Box sx={{ width: `${pct}%`, height: '100%', borderRadius: '6px', background: idx === 0 ? 'linear-gradient(90deg, #2563EB, #3B82F6)' : idx === 1 ? 'linear-gradient(90deg, #6366F1, #818CF8)' : idx === 2 ? 'linear-gradient(90deg, #10B981, #34D399)' : '#CBD5E1', transition: 'width 0.8s', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', pr: 1 }}>
@@ -534,7 +778,7 @@ const ResultsDashboardPro = () => {
                               <Chip label={`${pct}%`} size="small" sx={{ fontWeight: 700, bgcolor: `${COLORS[i]}15`, color: COLORS[i] }} />
                             </Box>
                             <Box sx={{ width: '100%', height: 8, borderRadius: 4, background: 'rgba(0,0,0,0.04)', mb: 0.8 }}><Box sx={{ width: `${pct}%`, height: '100%', borderRadius: 4, background: COLORS[i], transition: 'width 1s' }} /></Box>
-                            <Box display="flex" justifyContent="space-between"><Typography sx={{ fontSize: '11px', color: '#94A3B8' }}>{sec.scoredEventsCount}/{sec.totalEventsCount} events</Typography>{topP && <Typography sx={{ fontSize: '11px', fontWeight: 600, color: COLORS[i] }}>🏆 {topP.parish}</Typography>}</Box>
+                            <Box display="flex" justifyContent="space-between"><Typography sx={{ fontSize: '11px', color: '#94A3B8' }}>{sec.scoredEventsCount}/{sec.totalEventsCount} events</Typography>{topP && <Typography sx={{ fontSize: '11px', fontWeight: 600, color: COLORS[i] }}>🏆 <ParishName name={topP.parish} sx={{ fontSize: '11px', fontWeight: 600, color: COLORS[i], display: 'inline' }} /></Typography>}</Box>
                           </Box>
                         );
                       })}
@@ -557,9 +801,9 @@ const ResultsDashboardPro = () => {
                       {parishStandings.map((p, idx) => {
                         const pct = maxPoints > 0 ? (p.totalPoints / maxPoints) * 100 : 0; const dc = getDivConfig(p.division);
                         return (
-                          <TableRow key={p.parish} sx={{ '&:hover': { background: 'rgba(0,0,0,0.02)' } }}>
+                          <TableRow key={p.parish} sx={{ cursor: 'pointer', '&:hover': { background: 'rgba(37,99,235,0.04)' } }} onClick={() => openParishModal(p.parish)}>
                             <TableCell><Box display="flex" alignItems="center" gap={0.5}><Typography sx={{ fontWeight: 700, fontSize: '13px', color: idx < 3 ? '#2563EB' : '#94A3B8' }}>{idx + 1}</Typography>{idx < 3 && <span>{['🥇', '🥈', '🥉'][idx]}</span>}</Box></TableCell>
-                            <TableCell sx={{ fontWeight: idx < 3 ? 700 : 500 }}>{p.parish}</TableCell>
+                            <TableCell sx={{ fontWeight: idx < 3 ? 700 : 500, color: '#2563EB' }}>{p.parish}</TableCell>
                             <TableCell><Chip label={dc.label.replace('Division ', 'Div ')} size="small" sx={{ fontWeight: 700, fontSize: '10px', bgcolor: `${dc.color}12`, color: dc.color }} /></TableCell>
                             <TableCell><Box display="flex" alignItems="center" gap={1}><Box sx={{ flex: 1, height: 16, background: 'rgba(0,0,0,0.04)', borderRadius: '3px', overflow: 'hidden' }}><Box sx={{ width: `${pct}%`, height: '100%', borderRadius: '3px', background: idx < 3 ? '#2563EB' : '#CBD5E1' }} /></Box><Typography sx={{ fontWeight: 800, fontSize: '14px', color: '#2563EB', minWidth: 35, textAlign: 'right' }}>{p.totalPoints}</Typography></Box></TableCell>
                             <TableCell align="center" sx={{ color: '#EAB308', fontWeight: 600 }}>{p.firsts || '-'}</TableCell><TableCell align="center" sx={{ color: '#94A3B8', fontWeight: 600 }}>{p.seconds || '-'}</TableCell><TableCell align="center" sx={{ color: '#B45309', fontWeight: 600 }}>{p.thirds || '-'}</TableCell>
@@ -594,7 +838,7 @@ const ResultsDashboardPro = () => {
                             <TableCell sx={{ color: '#94A3B8' }}>{idx + 1}</TableCell><TableCell sx={{ fontWeight: 600 }}>{ev.eventName}</TableCell>
                             <TableCell><Chip label={ev.section} size="small" sx={{ bgcolor: '#EFF6FF', color: '#2563EB', fontSize: '11px', fontWeight: 600 }} /></TableCell>
                             <TableCell><Chip label={ev.eventType === 'group' ? 'Group' : 'Individual'} size="small" sx={{ bgcolor: ev.eventType === 'group' ? '#FDF2F8' : '#ECFDF5', color: ev.eventType === 'group' ? '#EC4899' : '#059669', fontSize: '11px', fontWeight: 600 }} /></TableCell>
-                            {['1', '2', '3'].map(pos => { const wn = w(pos); return (<TableCell key={pos} align="center">{wn ? (<Box><Typography sx={{ fontWeight: 700, fontSize: '13px', color: '#1a202c' }}>{wn.name}</Typography><Typography sx={{ fontSize: '11px', color: '#94A3B8' }}>{wn.parish}</Typography></Box>) : <Typography sx={{ color: '#E2E8F0' }}>—</Typography>}</TableCell>); })}
+                            {['1', '2', '3'].map(pos => { const wn = w(pos); return (<TableCell key={pos} align="center">{wn ? (<Box><Typography sx={{ fontWeight: 700, fontSize: '13px', color: '#1a202c' }}>{wn.name}</Typography><ParishName name={wn.parish} sx={{ fontSize: '11px', color: '#94A3B8' }} /></Box>) : <Typography sx={{ color: '#E2E8F0' }}>—</Typography>}</TableCell>); })}
                           </TableRow>
                         );
                       })}
@@ -620,7 +864,7 @@ const ResultsDashboardPro = () => {
                           {top.map((p, pi) => (
                             <Box key={p.parish} sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.8 }}>
                               <Typography sx={{ fontSize: '14px', width: 20 }}>{['🥇', '🥈', '🥉'][pi]}</Typography>
-                              <Typography sx={{ flex: 1, fontWeight: pi === 0 ? 700 : 500, fontSize: '13px' }}>{p.parish}</Typography>
+                              <ParishName name={p.parish} sx={{ flex: 1, fontWeight: pi === 0 ? 700 : 500, fontSize: '13px' }} />
                               <Typography sx={{ fontWeight: 700, fontSize: '13px', color: COLORS[i] }}>{p.totalPoints}</Typography>
                             </Box>
                           ))}
@@ -634,9 +878,9 @@ const ResultsDashboardPro = () => {
                       <TableContainer><Table size="small" sx={tableStyles}><TableHead><TableRow><TableCell width={60}>Rank</TableCell><TableCell>Parish</TableCell><TableCell sx={{ width: '40%' }}>Points</TableCell></TableRow></TableHead><TableBody>
                         {sec.parishStandings.map((p, idx) => { const sMax = sec.parishStandings[0]?.totalPoints || 1;
                           return (
-                            <TableRow key={p.parish} sx={{ '&:hover': { background: 'rgba(0,0,0,0.02)' } }}>
+                            <TableRow key={p.parish} sx={{ cursor: 'pointer', '&:hover': { background: 'rgba(0,0,0,0.02)' } }} onClick={() => openParishModal(p.parish)}>
                               <TableCell><Typography sx={{ fontWeight: 700, fontSize: '13px' }}>{idx + 1} {idx < 3 && ['🥇', '🥈', '🥉'][idx]}</Typography></TableCell>
-                              <TableCell sx={{ fontWeight: idx < 3 ? 700 : 400 }}>{p.parish}</TableCell>
+                              <TableCell sx={{ fontWeight: idx < 3 ? 700 : 400, color: '#2563EB' }}>{p.parish}</TableCell>
                               <TableCell><Box display="flex" alignItems="center" gap={1}><Box sx={{ flex: 1, height: 14, background: 'rgba(0,0,0,0.04)', borderRadius: '3px', overflow: 'hidden' }}><Box sx={{ width: `${(p.totalPoints / sMax) * 100}%`, height: '100%', borderRadius: '3px', background: COLORS[si] }} /></Box><Typography sx={{ fontWeight: 700, fontSize: '13px', color: COLORS[si], minWidth: 30, textAlign: 'right' }}>{p.totalPoints}</Typography></Box></TableCell>
                             </TableRow>
                           );
@@ -766,6 +1010,9 @@ const ResultsDashboardPro = () => {
           )}
         </Container>
       </DashboardContainer>
+
+      {/* Parish Detail Modal */}
+      <ParishDetailModal />
     </ThemeProvider>
   );
 };
