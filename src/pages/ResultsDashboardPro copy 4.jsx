@@ -88,73 +88,6 @@ const tableStyles = {
 
 const POSITION_EMOJI = { '1': '🥇', '2': '🥈', '3': '🥉' };
 const POSITION_LABEL = { '1': 'First', '2': 'Second', '3': 'Third' };
-const POSITION_BG = { '1': '#FFFBEB', '2': '#F8FAFC', '3': '#FFF7ED' };
-const POSITION_BORDER = { '1': '#FCD34D', '2': '#CBD5E1', '3': '#FDBA74' };
-
-// ====== MOBILE-FRIENDLY PRIZE ROW COMPONENT ======
-const PrizeRow = ({ r, idx, showParish = false, onParishClick }) => (
-  <Box sx={{
-    display: 'flex', alignItems: 'flex-start', gap: 1.5, p: 1.5,
-    borderBottom: '1px solid rgba(0,0,0,0.05)',
-    background: POSITION_BG[r.position] || 'transparent',
-    '&:hover': { background: 'rgba(0,0,0,0.02)' },
-  }}>
-    {/* Position badge */}
-    <Box sx={{
-      minWidth: 44, height: 44, borderRadius: 12,
-      background: '#fff', border: `2px solid ${POSITION_BORDER[r.position] || '#E2E8F0'}`,
-      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-    }}>
-      <Typography sx={{ fontSize: '18px', lineHeight: 1 }}>{POSITION_EMOJI[r.position]}</Typography>
-    </Box>
-    {/* Details */}
-    <Box sx={{ flex: 1, minWidth: 0 }}>
-      <Typography sx={{ fontWeight: 700, fontSize: '14px', color: '#1a202c', lineHeight: 1.3 }}>{r.eventName}</Typography>
-      <Box display="flex" gap={0.5} flexWrap="wrap" mt={0.5}>
-        <Chip label={r.section} size="small" sx={{ bgcolor: '#EFF6FF', color: '#2563EB', fontSize: '10px', fontWeight: 600, height: 20 }} />
-        <Chip label={r.eventType === 'group' ? 'Group' : 'Individual'} size="small" sx={{ bgcolor: r.eventType === 'group' ? '#FDF2F8' : '#ECFDF5', color: r.eventType === 'group' ? '#EC4899' : '#059669', fontSize: '10px', fontWeight: 600, height: 20 }} />
-        {r.grade && <Chip label={`Grade ${r.grade}`} size="small" sx={{ fontWeight: 700, fontSize: '10px', height: 20, bgcolor: r.grade === 'A' ? '#ECFDF5' : r.grade === 'B' ? '#EFF6FF' : '#FFFBEB', color: r.grade === 'A' ? '#059669' : r.grade === 'B' ? '#2563EB' : '#D97706' }} />}
-      </Box>
-      {r.participantName && r.participantName !== 'Group' && (
-        <Typography sx={{ fontSize: '12px', color: '#64748B', mt: 0.3 }}>{r.participantName}</Typography>
-      )}
-      {showParish && r.parish && onParishClick && (
-        <Typography
-          component="span"
-          onClick={(e) => { e.stopPropagation(); onParishClick(r.parish); }}
-          sx={{ fontSize: '12px', color: '#2563EB', cursor: 'pointer', '&:hover': { textDecoration: 'underline' }, mt: 0.2, display: 'inline-block' }}
-        >{r.parish}</Typography>
-      )}
-    </Box>
-    {/* Points */}
-    <Box sx={{ textAlign: 'right', flexShrink: 0 }}>
-      <Typography sx={{ fontWeight: 800, fontSize: '16px', color: '#2563EB' }}>{r.totalPoints}</Typography>
-      <Typography sx={{ fontSize: '10px', color: '#94A3B8', fontWeight: 600 }}>pts</Typography>
-    </Box>
-  </Box>
-);
-
-// ====== MOBILE-FRIENDLY GRADED ROW COMPONENT ======
-const GradedRow = ({ r, idx }) => (
-  <Box sx={{
-    display: 'flex', alignItems: 'flex-start', gap: 1.5, px: 1.5, py: 1.2,
-    borderBottom: '1px solid rgba(0,0,0,0.04)',
-    '&:hover': { background: 'rgba(0,0,0,0.02)' },
-  }}>
-    <Typography sx={{ minWidth: 22, fontWeight: 600, fontSize: '12px', color: '#94A3B8', pt: 0.3 }}>{idx + 1}</Typography>
-    <Box sx={{ flex: 1, minWidth: 0 }}>
-      <Typography sx={{ fontWeight: 600, fontSize: '13px', color: '#1a202c', lineHeight: 1.3 }}>{r.eventName}</Typography>
-      <Box display="flex" gap={0.5} flexWrap="wrap" mt={0.3}>
-        <Chip label={r.section} size="small" sx={{ bgcolor: '#EFF6FF', color: '#2563EB', fontSize: '10px', fontWeight: 600, height: 18 }} />
-        {r.grade && <Chip label={`Grade ${r.grade}`} size="small" sx={{ fontWeight: 700, fontSize: '10px', height: 18, bgcolor: r.grade === 'A' ? '#ECFDF5' : r.grade === 'B' ? '#EFF6FF' : '#FFFBEB', color: r.grade === 'A' ? '#059669' : r.grade === 'B' ? '#2563EB' : '#D97706' }} />}
-      </Box>
-      {r.participantName && r.participantName !== 'Group' && (
-        <Typography sx={{ fontSize: '11px', color: '#64748B', mt: 0.2 }}>{r.participantName}</Typography>
-      )}
-    </Box>
-    <Typography sx={{ fontWeight: 700, fontSize: '14px', color: '#64748B', flexShrink: 0 }}>{r.totalPoints}</Typography>
-  </Box>
-);
 
 const ResultsDashboardPro = () => {
   const [activeView, setActiveView] = useState('overview');
@@ -643,31 +576,94 @@ const ResultsDashboardPro = () => {
             </Box>
           </Box>
 
-          {/* Prize Winners — Card Layout */}
+          {/* Prize Winners Table */}
           {d.prizeList.length > 0 && (
             <Box sx={{ p: 2.5 }}>
               <Typography sx={{ fontWeight: 700, fontSize: '15px', color: '#1a202c', mb: 1.5, display: 'flex', alignItems: 'center', gap: 1 }}>
                 <Trophy size={18} color="#D97706" /> Prize Winners ({d.prizeList.length})
               </Typography>
-              <Box sx={{ borderRadius: 2, border: '1px solid rgba(0,0,0,0.06)', overflow: 'hidden' }}>
-                {d.prizeList.map((r, idx) => (
-                  <PrizeRow key={idx} r={r} idx={idx} />
-                ))}
-              </Box>
+              <TableContainer sx={{ borderRadius: 2, border: '1px solid rgba(0,0,0,0.06)' }}>
+                <Table size="small" sx={tableStyles}>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell width={40}>#</TableCell>
+                      <TableCell>Event</TableCell>
+                      <TableCell>Section</TableCell>
+                      <TableCell>Type</TableCell>
+                      <TableCell align="center">Position</TableCell>
+                      <TableCell>Participant</TableCell>
+                      <TableCell align="center">Grade</TableCell>
+                      <TableCell align="right">Points</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {d.prizeList.map((r, idx) => (
+                      <TableRow key={idx} sx={{ '&:hover': { background: 'rgba(0,0,0,0.02)' } }}>
+                        <TableCell sx={{ color: '#94A3B8' }}>{idx + 1}</TableCell>
+                        <TableCell sx={{ fontWeight: 600 }}>{r.eventName}</TableCell>
+                        <TableCell><Chip label={r.section} size="small" sx={{ bgcolor: '#EFF6FF', color: '#2563EB', fontSize: '11px', fontWeight: 600 }} /></TableCell>
+                        <TableCell><Chip label={r.eventType === 'group' ? 'Group' : 'Individual'} size="small" sx={{ bgcolor: r.eventType === 'group' ? '#FDF2F8' : '#ECFDF5', color: r.eventType === 'group' ? '#EC4899' : '#059669', fontSize: '11px', fontWeight: 600 }} /></TableCell>
+                        <TableCell align="center">
+                          <Box display="flex" alignItems="center" justifyContent="center" gap={0.5}>
+                            <Typography sx={{ fontSize: '16px' }}>{POSITION_EMOJI[r.position]}</Typography>
+                            <Typography sx={{ fontWeight: 700, fontSize: '12px', color: '#1a202c' }}>{POSITION_LABEL[r.position]}</Typography>
+                          </Box>
+                        </TableCell>
+                        <TableCell sx={{ fontWeight: 500 }}>{r.participantName}</TableCell>
+                        <TableCell align="center">
+                          <Chip label={r.grade || '—'} size="small" sx={{
+                            fontWeight: 700, minWidth: 28,
+                            bgcolor: r.grade === 'A' ? '#ECFDF5' : r.grade === 'B' ? '#EFF6FF' : '#FFFBEB',
+                            color: r.grade === 'A' ? '#059669' : r.grade === 'B' ? '#2563EB' : '#D97706',
+                          }} />
+                        </TableCell>
+                        <TableCell align="right" sx={{ fontWeight: 700, color: '#2563EB' }}>{r.totalPoints}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
             </Box>
           )}
 
-          {/* Other Graded Entries — Card Layout */}
+          {/* Other Graded Entries */}
           {d.gradedList.length > 0 && (
             <Box sx={{ p: 2.5, pt: 0 }}>
               <Typography sx={{ fontWeight: 700, fontSize: '15px', color: '#1a202c', mb: 1.5, display: 'flex', alignItems: 'center', gap: 1 }}>
                 <Award size={18} color="#6366F1" /> Other Entries ({d.gradedList.length})
               </Typography>
-              <Box sx={{ borderRadius: 2, border: '1px solid rgba(0,0,0,0.06)', overflow: 'hidden' }}>
-                {d.gradedList.map((r, idx) => (
-                  <GradedRow key={idx} r={r} idx={idx} />
-                ))}
-              </Box>
+              <TableContainer sx={{ borderRadius: 2, border: '1px solid rgba(0,0,0,0.06)' }}>
+                <Table size="small" sx={tableStyles}>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell width={40}>#</TableCell>
+                      <TableCell>Event</TableCell>
+                      <TableCell>Section</TableCell>
+                      <TableCell>Participant</TableCell>
+                      <TableCell align="center">Grade</TableCell>
+                      <TableCell align="right">Points</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {d.gradedList.map((r, idx) => (
+                      <TableRow key={idx} sx={{ '&:hover': { background: 'rgba(0,0,0,0.02)' } }}>
+                        <TableCell sx={{ color: '#94A3B8' }}>{idx + 1}</TableCell>
+                        <TableCell sx={{ fontWeight: 500 }}>{r.eventName}</TableCell>
+                        <TableCell><Chip label={r.section} size="small" sx={{ bgcolor: '#EFF6FF', color: '#2563EB', fontSize: '11px', fontWeight: 600 }} /></TableCell>
+                        <TableCell>{r.participantName}</TableCell>
+                        <TableCell align="center">
+                          <Chip label={r.grade || '—'} size="small" sx={{
+                            fontWeight: 700, minWidth: 28,
+                            bgcolor: r.grade === 'A' ? '#ECFDF5' : r.grade === 'B' ? '#EFF6FF' : '#FFFBEB',
+                            color: r.grade === 'A' ? '#059669' : r.grade === 'B' ? '#2563EB' : '#D97706',
+                          }} />
+                        </TableCell>
+                        <TableCell align="right" sx={{ fontWeight: 600 }}>{r.totalPoints}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
             </Box>
           )}
 
@@ -1079,7 +1075,7 @@ const ResultsDashboardPro = () => {
                           </Box>
                         </Box>
 
-                        {/* Prize Winners — Card Layout */}
+                        {/* Prize Winners */}
                         {p.prizes.length > 0 && (
                           <Box>
                             <Box sx={{ px: 2.5, pt: 2, pb: 0.5 }}>
@@ -1087,27 +1083,82 @@ const ResultsDashboardPro = () => {
                                 <Trophy size={14} color="#D97706" /> Prize Winners ({p.prizes.length})
                               </Typography>
                             </Box>
-                            <Box sx={{ mx: 2.5, mb: 2, borderRadius: 2, border: '1px solid rgba(0,0,0,0.06)', overflow: 'hidden' }}>
-                              {p.prizes.map((r, idx) => (
-                                <PrizeRow key={idx} r={r} idx={idx} />
-                              ))}
-                            </Box>
+                            <TableContainer>
+                              <Table size="small" sx={tableStyles}>
+                                <TableHead>
+                                  <TableRow>
+                                    <TableCell width={40}>#</TableCell>
+                                    <TableCell>Event</TableCell>
+                                    <TableCell>Section</TableCell>
+                                    <TableCell>Type</TableCell>
+                                    <TableCell align="center">Position</TableCell>
+                                    <TableCell>Participant</TableCell>
+                                    <TableCell align="center">Grade</TableCell>
+                                    <TableCell align="right">Points</TableCell>
+                                  </TableRow>
+                                </TableHead>
+                                <TableBody>
+                                  {p.prizes.map((r, idx) => (
+                                    <TableRow key={idx} sx={{ '&:hover': { background: 'rgba(0,0,0,0.02)' } }}>
+                                      <TableCell sx={{ color: '#94A3B8' }}>{idx + 1}</TableCell>
+                                      <TableCell sx={{ fontWeight: 600 }}>{r.eventName}</TableCell>
+                                      <TableCell><Chip label={r.section} size="small" sx={{ bgcolor: '#EFF6FF', color: '#2563EB', fontSize: '11px', fontWeight: 600 }} /></TableCell>
+                                      <TableCell><Chip label={r.eventType === 'group' ? 'Group' : 'Individual'} size="small" sx={{ bgcolor: r.eventType === 'group' ? '#FDF2F8' : '#ECFDF5', color: r.eventType === 'group' ? '#EC4899' : '#059669', fontSize: '11px', fontWeight: 600 }} /></TableCell>
+                                      <TableCell align="center">
+                                        <Box display="flex" alignItems="center" justifyContent="center" gap={0.5}>
+                                          <Typography sx={{ fontSize: '16px' }}>{POSITION_EMOJI[r.position]}</Typography>
+                                          <Typography sx={{ fontWeight: 700, fontSize: '12px', color: '#1a202c' }}>{POSITION_LABEL[r.position]}</Typography>
+                                        </Box>
+                                      </TableCell>
+                                      <TableCell sx={{ fontWeight: 500 }}>{r.participantName}</TableCell>
+                                      <TableCell align="center">
+                                        <Chip label={r.grade || '—'} size="small" sx={{ fontWeight: 700, minWidth: 28, bgcolor: r.grade === 'A' ? '#ECFDF5' : r.grade === 'B' ? '#EFF6FF' : '#FFFBEB', color: r.grade === 'A' ? '#059669' : r.grade === 'B' ? '#2563EB' : '#D97706' }} />
+                                      </TableCell>
+                                      <TableCell align="right" sx={{ fontWeight: 700, color: '#2563EB' }}>{r.totalPoints}</TableCell>
+                                    </TableRow>
+                                  ))}
+                                </TableBody>
+                              </Table>
+                            </TableContainer>
                           </Box>
                         )}
 
-                        {/* Other Graded Entries — Card Layout */}
+                        {/* Other Graded Entries */}
                         {p.graded.length > 0 && (
                           <Box>
-                            <Box sx={{ px: 2.5, pt: p.prizes.length > 0 ? 0 : 2, pb: 0.5, borderTop: p.prizes.length > 0 ? '1px solid rgba(0,0,0,0.04)' : 'none' }}>
+                            <Box sx={{ px: 2.5, pt: 2, pb: 0.5, borderTop: p.prizes.length > 0 ? '1px solid rgba(0,0,0,0.04)' : 'none' }}>
                               <Typography sx={{ fontWeight: 700, fontSize: '13px', color: '#64748B', display: 'flex', alignItems: 'center', gap: 0.5 }}>
                                 <Award size={14} color="#6366F1" /> Other Entries ({p.graded.length})
                               </Typography>
                             </Box>
-                            <Box sx={{ mx: 2.5, mb: 2, borderRadius: 2, border: '1px solid rgba(0,0,0,0.06)', overflow: 'hidden' }}>
-                              {p.graded.map((r, idx) => (
-                                <GradedRow key={idx} r={r} idx={idx} />
-                              ))}
-                            </Box>
+                            <TableContainer>
+                              <Table size="small" sx={tableStyles}>
+                                <TableHead>
+                                  <TableRow>
+                                    <TableCell width={40}>#</TableCell>
+                                    <TableCell>Event</TableCell>
+                                    <TableCell>Section</TableCell>
+                                    <TableCell>Participant</TableCell>
+                                    <TableCell align="center">Grade</TableCell>
+                                    <TableCell align="right">Points</TableCell>
+                                  </TableRow>
+                                </TableHead>
+                                <TableBody>
+                                  {p.graded.map((r, idx) => (
+                                    <TableRow key={idx} sx={{ '&:hover': { background: 'rgba(0,0,0,0.02)' } }}>
+                                      <TableCell sx={{ color: '#94A3B8' }}>{idx + 1}</TableCell>
+                                      <TableCell sx={{ fontWeight: 500 }}>{r.eventName}</TableCell>
+                                      <TableCell><Chip label={r.section} size="small" sx={{ bgcolor: '#EFF6FF', color: '#2563EB', fontSize: '11px', fontWeight: 600 }} /></TableCell>
+                                      <TableCell>{r.participantName}</TableCell>
+                                      <TableCell align="center">
+                                        <Chip label={r.grade || '—'} size="small" sx={{ fontWeight: 700, minWidth: 28, bgcolor: r.grade === 'A' ? '#ECFDF5' : r.grade === 'B' ? '#EFF6FF' : '#FFFBEB', color: r.grade === 'A' ? '#059669' : r.grade === 'B' ? '#2563EB' : '#D97706' }} />
+                                      </TableCell>
+                                      <TableCell align="right" sx={{ fontWeight: 600 }}>{r.totalPoints}</TableCell>
+                                    </TableRow>
+                                  ))}
+                                </TableBody>
+                              </Table>
+                            </TableContainer>
                           </Box>
                         )}
                       </ChartCard>
