@@ -144,7 +144,7 @@ const ParticipantList = () => {
   const [allEvents, setAllEvents] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [dataLoaded, setDataLoaded] = useState(false);
-
+const [sortBy, setSortBy] = useState('name');
   const debounceRef = useRef(null);
   const parishMapRef = useRef({});
 
@@ -270,8 +270,26 @@ const ParticipantList = () => {
     if (reg.registrationNumber) entry.regNums.add(reg.registrationNumber);
     if (reg.groupRegistrationNumber) entry.regNums.add(reg.groupRegistrationNumber);
   }
-  return Object.values(grouped).sort((a, b) => a.name.localeCompare(b.name));
-}, [filteredRegistrations]);
+ return Object.values(grouped).sort((a, b) => {
+  switch (sortBy) {
+    case 'parish':
+      return a.parish.localeCompare(b.parish) || a.name.localeCompare(b.name);
+    case 'regNo': {
+      const aNum = [...a.regNums][0] || '';
+      const bNum = [...b.regNums][0] || '';
+      const aVal = parseInt(aNum) || 999999;
+      const bVal = parseInt(bNum) || 999999;
+      return aVal - bVal || a.name.localeCompare(b.name);
+    }
+    case 'class':
+      return (a.standard || '').localeCompare(b.standard || '') || a.name.localeCompare(b.name);
+    case 'section':
+      return (a.section || '').localeCompare(b.section || '') || a.name.localeCompare(b.name);
+    default:
+      return a.name.localeCompare(b.name);
+  }
+});
+}, [filteredRegistrations, sortBy]);
 
   const filteredEvents = useMemo(() =>
     selectedSection ? allEvents.filter(e => e.section === selectedSection) : allEvents,
@@ -422,7 +440,7 @@ const handlePrint = () => {
                     Filters
                   </Typography>
                   <Grid container spacing={2}>
-                    <Grid item xs={12} md={3}>
+                     <Grid item xs={12} md={2}>
                       <FormControl fullWidth size="small">
                         <InputLabel>Parish</InputLabel>
                         <Select value={selectedParish} label="Parish"
@@ -444,7 +462,7 @@ const handlePrint = () => {
                         </Select>
                       </FormControl>
                     </Grid>
-                    <Grid item xs={12} md={3}>
+                     <Grid item xs={12} md={2}>
                       <FormControl fullWidth size="small">
                         <InputLabel>Event</InputLabel>
                         <Select value={selectedEvent} label="Event"
@@ -456,7 +474,7 @@ const handlePrint = () => {
                         </Select>
                       </FormControl>
                     </Grid>
-                    <Grid item xs={12} md={2}>
+                     <Grid item xs={12} md={2}>
                       <FormControl fullWidth size="small">
                         <InputLabel>Gender</InputLabel>
                         <Select value={selectedGender} label="Gender"
@@ -470,6 +488,19 @@ const handlePrint = () => {
                     <Grid item xs={12} md={2}>
                       <TextField fullWidth size="small" label="Search Name/Reg No"
                         value={searchQuery} onChange={handleSearchChange} />
+                    </Grid>
+                    <Grid item xs={12} md={2}>
+                      <FormControl fullWidth size="small">
+                        <InputLabel>Order By</InputLabel>
+                        <Select value={sortBy} label="Order By"
+                          onChange={(e) => setSortBy(e.target.value)}>
+                          <MenuItem value="name">Name</MenuItem>
+                          <MenuItem value="parish">Parish</MenuItem>
+                          <MenuItem value="regNo">Reg No</MenuItem>
+                  
+                          <MenuItem value="section">Section</MenuItem>
+                        </Select>
+                      </FormControl>
                     </Grid>
                   </Grid>
                 </ChartCard>
