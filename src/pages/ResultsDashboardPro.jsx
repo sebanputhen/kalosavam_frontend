@@ -1,12 +1,12 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Box, Container, Typography, Grid, Select, MenuItem, FormControl, InputLabel,
   Table, TableBody, TableHead, TableRow, TableCell, TableContainer,
-  CircularProgress, Chip, Button, IconButton, TextField, InputAdornment, Paper, Card, CardContent,
-  Dialog, DialogTitle, DialogContent, DialogActions
+  CircularProgress, Chip, Button, IconButton, TextField, InputAdornment, Card, CardContent,
+  Dialog, DialogTitle, DialogContent, DialogActions, Drawer, useMediaQuery, Fade, Slide
 } from '@mui/material';
 import { createTheme, ThemeProvider, styled } from '@mui/material/styles';
-import { Award, Users, Target, BarChart3, RefreshCw, Trophy, MapPin, Layers, Music, Search, Filter, Grid3x3, X } from 'lucide-react';
+import { Award, Users, Target, BarChart3, RefreshCw, Trophy, MapPin, Layers, Music, Search, Filter, Grid3x3, X, ChevronDown, SlidersHorizontal } from 'lucide-react';
 import axiosInstance from "../axiosConfig";
 
 const theme = createTheme({
@@ -25,46 +25,37 @@ const theme = createTheme({
 // ====== STYLED COMPONENTS ======
 const DashboardContainer = styled(Box)({
   minHeight: '100vh',
-  background: 'linear-gradient(135deg, #f0f4f8 0%, #d9e2ec 100%)',
-  paddingTop: 24, paddingBottom: 40,
+  background: 'linear-gradient(160deg, #f0f4f8 0%, #e2e8f0 50%, #dbeafe 100%)',
+  paddingBottom: 80, // space for bottom nav
 });
 
 const StyledCard = styled(Card)({
   borderRadius: 16,
-  boxShadow: '0 1px 3px rgba(0,0,0,0.08), 0 8px 24px rgba(0,0,0,0.04)',
-  border: '1px solid rgba(0,0,0,0.06)',
-  transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+  boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04)',
+  border: '1px solid rgba(0,0,0,0.05)',
+  transition: 'transform 0.15s ease, box-shadow 0.15s ease',
+  overflow: 'hidden',
   '&:hover': {
-    transform: 'translateY(-2px)',
-    boxShadow: '0 4px 12px rgba(0,0,0,0.1), 0 12px 32px rgba(0,0,0,0.06)',
+    transform: 'translateY(-1px)',
+    boxShadow: '0 4px 12px rgba(0,0,0,0.08), 0 8px 24px rgba(0,0,0,0.05)',
   }
 });
 
-const StyledCardContent = styled(CardContent)({ padding: '24px !important' });
-
-const StatWrapper = styled(Box)({ display: 'flex', justifyContent: 'space-between', alignItems: 'center' });
-
-const StatValue = styled(Typography)({
-  fontSize: '2rem', fontWeight: 700, lineHeight: 1.2, marginTop: 4, color: '#1a202c',
+const GlassCard = styled(Box)({
+  borderRadius: 16,
+  background: 'rgba(255,255,255,0.85)',
+  backdropFilter: 'blur(12px)',
+  border: '1px solid rgba(255,255,255,0.6)',
+  boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04)',
+  overflow: 'hidden',
 });
 
 const IconBox = styled(Box)(({ color }) => ({
-  width: 52, height: 52, borderRadius: 14,
+  width: 44, height: 44, borderRadius: 12,
   display: 'flex', alignItems: 'center', justifyContent: 'center',
-  background: `linear-gradient(135deg, ${color}22, ${color}11)`,
-  border: `1px solid ${color}33`, color: color,
+  background: `linear-gradient(135deg, ${color}20, ${color}10)`,
+  border: `1px solid ${color}25`, color: color,
 }));
-
-const ChartCard = styled(Card)({
-  borderRadius: 16,
-  boxShadow: '0 1px 3px rgba(0,0,0,0.08), 0 8px 24px rgba(0,0,0,0.04)',
-  border: '1px solid rgba(0,0,0,0.06)', padding: 24,
-});
-
-const PageHeader = styled(Box)({
-  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-  marginBottom: 32, flexWrap: 'wrap', gap: 16,
-});
 
 // ====== CONSTANTS ======
 const COLORS = ['#2563EB', '#10B981', '#6366F1', '#D97706', '#EC4899', '#0891B2', '#EA580C', '#8B5CF6', '#14B8A6', '#F43F5E'];
@@ -79,82 +70,124 @@ const getDivConfig = (key) => DIVISION_CONFIG.find(d => d.key === key) || DIVISI
 const getEventStage = (event) => event.category?.stage || event.stage || 'Unknown';
 const FORANE_ID = '673799a3cb9b4aa181e53fa2';
 
-const printStyles = `@media print { @page{size:A4 landscape;margin:8mm} .no-print{display:none!important} nav,header,footer,aside,.MuiDrawer-root,.MuiAppBar-root,[class*="Sidebar"],[class*="Navbar"],[class*="AppBar"],[class*="drawer"],[class*="header"]{display:none!important} .print-area{position:fixed!important;left:0;top:0;width:100%;margin:0;padding:5px;box-shadow:none;background:#fff;color:#000;border:none!important;border-radius:0!important} .print-area *{visibility:visible!important;color:#000!important} }`;
-
-const tableStyles = {
-  '& th': { color: '#64748B', fontWeight: 700, borderBottom: '2px solid #E2E8F0', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px', py: 1.5, background: '#F8FAFC' },
-  '& td': { color: '#1E293B', borderBottom: '1px solid #F1F5F9', py: 1.3 }
-};
-
 const POSITION_EMOJI = { '1': '🥇', '2': '🥈', '3': '🥉' };
-const POSITION_LABEL = { '1': 'First', '2': 'Second', '3': 'Third' };
-const POSITION_BG = { '1': '#FFFBEB', '2': '#F8FAFC', '3': '#FFF7ED' };
+const POSITION_BG = { '1': 'linear-gradient(135deg, #FFFBEB, #FEF3C7)', '2': 'linear-gradient(135deg, #F8FAFC, #F1F5F9)', '3': 'linear-gradient(135deg, #FFF7ED, #FFEDD5)' };
 const POSITION_BORDER = { '1': '#FCD34D', '2': '#CBD5E1', '3': '#FDBA74' };
 
-// ====== MOBILE-FRIENDLY PRIZE ROW COMPONENT ======
-const PrizeRow = ({ r, idx, showParish = false, onParishClick }) => (
+const printStyles = `@media print { @page{size:A4 landscape;margin:8mm} .no-print{display:none!important} .bottom-nav{display:none!important} nav,header,footer,aside,.MuiDrawer-root,.MuiAppBar-root{display:none!important} .print-area{position:fixed!important;left:0;top:0;width:100%;margin:0;padding:5px;box-shadow:none;background:#fff} }`;
+
+const tableStyles = {
+  '& th': { color: '#64748B', fontWeight: 700, borderBottom: '2px solid #E2E8F0', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px', py: 1.5, background: '#F8FAFC', whiteSpace: 'nowrap' },
+  '& td': { color: '#1E293B', borderBottom: '1px solid #F1F5F9', py: 1.2 }
+};
+
+// ====== MOBILE PRIZE CARD ======
+const PrizeCard = ({ r, showParish = false, onParishClick }) => (
   <Box sx={{
     display: 'flex', alignItems: 'flex-start', gap: 1.5, p: 1.5,
-    borderBottom: '1px solid rgba(0,0,0,0.05)',
+    borderBottom: '1px solid rgba(0,0,0,0.04)',
     background: POSITION_BG[r.position] || 'transparent',
-    '&:hover': { background: 'rgba(0,0,0,0.02)' },
+    '&:active': { background: 'rgba(0,0,0,0.03)' },
   }}>
-    {/* Position badge */}
     <Box sx={{
-      minWidth: 44, height: 44, borderRadius: 12,
+      minWidth: 40, height: 40, borderRadius: 10,
       background: '#fff', border: `2px solid ${POSITION_BORDER[r.position] || '#E2E8F0'}`,
-      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+      display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+      boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
     }}>
-      <Typography sx={{ fontSize: '18px', lineHeight: 1 }}>{POSITION_EMOJI[r.position]}</Typography>
+      <Typography sx={{ fontSize: '16px', lineHeight: 1 }}>{POSITION_EMOJI[r.position]}</Typography>
     </Box>
-    {/* Details */}
     <Box sx={{ flex: 1, minWidth: 0 }}>
-      <Typography sx={{ fontWeight: 700, fontSize: '14px', color: '#1a202c', lineHeight: 1.3 }}>{r.eventName}</Typography>
-      <Box display="flex" gap={0.5} flexWrap="wrap" mt={0.5}>
-        <Chip label={r.section} size="small" sx={{ bgcolor: '#EFF6FF', color: '#2563EB', fontSize: '10px', fontWeight: 600, height: 20 }} />
-        <Chip label={r.eventType === 'group' ? 'Group' : 'Individual'} size="small" sx={{ bgcolor: r.eventType === 'group' ? '#FDF2F8' : '#ECFDF5', color: r.eventType === 'group' ? '#EC4899' : '#059669', fontSize: '10px', fontWeight: 600, height: 20 }} />
-        {r.grade && <Chip label={`Grade ${r.grade}`} size="small" sx={{ fontWeight: 700, fontSize: '10px', height: 20, bgcolor: r.grade === 'A' ? '#ECFDF5' : r.grade === 'B' ? '#EFF6FF' : '#FFFBEB', color: r.grade === 'A' ? '#059669' : r.grade === 'B' ? '#2563EB' : '#D97706' }} />}
+      <Typography sx={{ fontWeight: 700, fontSize: '13px', color: '#1a202c', lineHeight: 1.3 }}>{r.eventName}</Typography>
+      <Box display="flex" gap={0.5} flexWrap="wrap" mt={0.4}>
+        <Chip label={r.section} size="small" sx={{ bgcolor: '#EFF6FF', color: '#2563EB', fontSize: '9px', fontWeight: 600, height: 18 }} />
+        <Chip label={r.eventType === 'group' ? 'Group' : 'Individual'} size="small" sx={{ bgcolor: r.eventType === 'group' ? '#FDF2F8' : '#ECFDF5', color: r.eventType === 'group' ? '#EC4899' : '#059669', fontSize: '9px', fontWeight: 600, height: 18 }} />
+        {r.grade && <Chip label={`Grade ${r.grade}`} size="small" sx={{ fontWeight: 700, fontSize: '9px', height: 18, bgcolor: r.grade === 'A' ? '#ECFDF5' : r.grade === 'B' ? '#EFF6FF' : '#FFFBEB', color: r.grade === 'A' ? '#059669' : r.grade === 'B' ? '#2563EB' : '#D97706' }} />}
       </Box>
       {r.participantName && r.participantName !== 'Group' && (
-        <Typography sx={{ fontSize: '12px', color: '#64748B', mt: 0.3 }}>{r.participantName}</Typography>
+        <Typography sx={{ fontSize: '11px', color: '#64748B', mt: 0.3 }}>{r.participantName}</Typography>
       )}
       {showParish && r.parish && onParishClick && (
         <Typography
           component="span"
           onClick={(e) => { e.stopPropagation(); onParishClick(r.parish); }}
-          sx={{ fontSize: '12px', color: '#2563EB', cursor: 'pointer', '&:hover': { textDecoration: 'underline' }, mt: 0.2, display: 'inline-block' }}
+          sx={{ fontSize: '11px', color: '#2563EB', cursor: 'pointer', '&:hover': { textDecoration: 'underline' }, mt: 0.2, display: 'inline-block' }}
         >{r.parish}</Typography>
       )}
     </Box>
-    {/* Points */}
     <Box sx={{ textAlign: 'right', flexShrink: 0 }}>
-      <Typography sx={{ fontWeight: 800, fontSize: '16px', color: '#2563EB' }}>{r.totalPoints}</Typography>
-      <Typography sx={{ fontSize: '10px', color: '#94A3B8', fontWeight: 600 }}>pts</Typography>
+      <Typography sx={{ fontWeight: 800, fontSize: '15px', color: '#2563EB' }}>{r.totalPoints}</Typography>
+      <Typography sx={{ fontSize: '9px', color: '#94A3B8', fontWeight: 600 }}>pts</Typography>
     </Box>
   </Box>
 );
 
-// ====== MOBILE-FRIENDLY GRADED ROW COMPONENT ======
+// ====== GRADED ROW ======
 const GradedRow = ({ r, idx }) => (
   <Box sx={{
-    display: 'flex', alignItems: 'flex-start', gap: 1.5, px: 1.5, py: 1.2,
-    borderBottom: '1px solid rgba(0,0,0,0.04)',
-    '&:hover': { background: 'rgba(0,0,0,0.02)' },
+    display: 'flex', alignItems: 'flex-start', gap: 1.2, px: 1.5, py: 1,
+    borderBottom: '1px solid rgba(0,0,0,0.03)',
+    '&:active': { background: 'rgba(0,0,0,0.02)' },
   }}>
-    <Typography sx={{ minWidth: 22, fontWeight: 600, fontSize: '12px', color: '#94A3B8', pt: 0.3 }}>{idx + 1}</Typography>
+    <Typography sx={{ minWidth: 20, fontWeight: 600, fontSize: '11px', color: '#94A3B8', pt: 0.2 }}>{idx + 1}</Typography>
     <Box sx={{ flex: 1, minWidth: 0 }}>
-      <Typography sx={{ fontWeight: 600, fontSize: '13px', color: '#1a202c', lineHeight: 1.3 }}>{r.eventName}</Typography>
-      <Box display="flex" gap={0.5} flexWrap="wrap" mt={0.3}>
-        <Chip label={r.section} size="small" sx={{ bgcolor: '#EFF6FF', color: '#2563EB', fontSize: '10px', fontWeight: 600, height: 18 }} />
-        {r.grade && <Chip label={`Grade ${r.grade}`} size="small" sx={{ fontWeight: 700, fontSize: '10px', height: 18, bgcolor: r.grade === 'A' ? '#ECFDF5' : r.grade === 'B' ? '#EFF6FF' : '#FFFBEB', color: r.grade === 'A' ? '#059669' : r.grade === 'B' ? '#2563EB' : '#D97706' }} />}
+      <Typography sx={{ fontWeight: 600, fontSize: '12px', color: '#1a202c', lineHeight: 1.3 }}>{r.eventName}</Typography>
+      <Box display="flex" gap={0.4} flexWrap="wrap" mt={0.2}>
+        <Chip label={r.section} size="small" sx={{ bgcolor: '#EFF6FF', color: '#2563EB', fontSize: '9px', fontWeight: 600, height: 16 }} />
+        {r.grade && <Chip label={`Grade ${r.grade}`} size="small" sx={{ fontWeight: 700, fontSize: '9px', height: 16, bgcolor: r.grade === 'A' ? '#ECFDF5' : r.grade === 'B' ? '#EFF6FF' : '#FFFBEB', color: r.grade === 'A' ? '#059669' : r.grade === 'B' ? '#2563EB' : '#D97706' }} />}
       </Box>
       {r.participantName && r.participantName !== 'Group' && (
-        <Typography sx={{ fontSize: '11px', color: '#64748B', mt: 0.2 }}>{r.participantName}</Typography>
+        <Typography sx={{ fontSize: '10px', color: '#64748B', mt: 0.1 }}>{r.participantName}</Typography>
       )}
     </Box>
-    <Typography sx={{ fontWeight: 700, fontSize: '14px', color: '#64748B', flexShrink: 0 }}>{r.totalPoints}</Typography>
+    <Typography sx={{ fontWeight: 700, fontSize: '13px', color: '#64748B', flexShrink: 0 }}>{r.totalPoints}</Typography>
   </Box>
 );
+
+// ====== MOBILE EVENT CARD (replaces table rows on mobile) ======
+const EventCard = ({ event, winners, onParishClick }) => {
+  const w = pos => (winners || []).find(x => x.position === pos);
+  const isScored = (winners || []).length > 0;
+  return (
+    <Box sx={{
+      p: 1.5, borderBottom: '1px solid rgba(0,0,0,0.04)',
+      background: isScored ? 'rgba(16,185,129,0.02)' : 'transparent',
+      '&:active': { background: 'rgba(0,0,0,0.02)' },
+    }}>
+      <Box display="flex" alignItems="center" gap={1} mb={0.8}>
+        <Typography sx={{ fontWeight: 700, fontSize: '13px', color: '#1a202c', flex: 1 }}>{event.eventName || event.name}</Typography>
+        {isScored && <Chip label="✓" size="small" sx={{ bgcolor: '#ECFDF5', color: '#059669', fontWeight: 700, height: 18, minWidth: 18, '& .MuiChip-label': { px: 0.4 } }} />}
+      </Box>
+      <Box display="flex" gap={0.5} flexWrap="wrap" mb={isScored ? 1 : 0}>
+        <Chip label={event.section} size="small" sx={{ bgcolor: '#EFF6FF', color: '#2563EB', fontSize: '9px', fontWeight: 600, height: 18 }} />
+        <Chip label={event.eventType === 'group' ? 'Group' : 'Individual'} size="small" sx={{ bgcolor: event.eventType === 'group' ? '#FDF2F8' : '#ECFDF5', color: event.eventType === 'group' ? '#EC4899' : '#059669', fontSize: '9px', fontWeight: 600, height: 18 }} />
+        {event.gender && <Chip label={event.gender === 'male' ? 'Boys' : event.gender === 'female' ? 'Girls' : 'All'} size="small" sx={{ fontSize: '9px', fontWeight: 600, height: 18, bgcolor: '#F1F5F9', color: '#64748B' }} />}
+      </Box>
+      {isScored && (
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+          {['1', '2', '3'].map(pos => {
+            const wn = w(pos);
+            if (!wn) return null;
+            return (
+              <Box key={pos} sx={{ display: 'flex', alignItems: 'center', gap: 1, pl: 0.5 }}>
+                <Typography sx={{ fontSize: '14px', width: 20 }}>{POSITION_EMOJI[pos]}</Typography>
+                <Box sx={{ flex: 1, minWidth: 0 }}>
+                  <Typography sx={{ fontWeight: 600, fontSize: '12px', color: '#1a202c' }}>{wn.name}</Typography>
+                  <Typography
+                    component="span"
+                    onClick={() => onParishClick?.(wn.parish)}
+                    sx={{ fontSize: '10px', color: '#2563EB', cursor: 'pointer', '&:hover': { textDecoration: 'underline' } }}
+                  >{wn.parish}</Typography>
+                </Box>
+                {wn.grade && <Chip label={wn.grade} size="small" sx={{ height: 16, fontSize: '9px', fontWeight: 700, bgcolor: wn.grade === 'A' ? '#ECFDF5' : wn.grade === 'B' ? '#EFF6FF' : '#FFFBEB', color: wn.grade === 'A' ? '#059669' : wn.grade === 'B' ? '#2563EB' : '#D97706' }} />}
+              </Box>
+            );
+          })}
+        </Box>
+      )}
+    </Box>
+  );
+};
 
 const ResultsDashboardPro = () => {
   const [activeView, setActiveView] = useState('overview');
@@ -169,10 +202,14 @@ const ResultsDashboardPro = () => {
   const [events, setEvents] = useState([]);
   const [parishes, setParishes] = useState([]);
   const [stageAllocation, setStageAllocation] = useState(null);
+  const [filterDrawerOpen, setFilterDrawerOpen] = useState(false);
 
-  // Parish detail modal state
   const [parishModalOpen, setParishModalOpen] = useState(false);
   const [selectedParishName, setSelectedParishName] = useState('');
+  const [modalSectionFilter, setModalSectionFilter] = useState('');
+
+  const isMobile = useMediaQuery('(max-width:768px)');
+  const isSmall = useMediaQuery('(max-width:480px)');
 
   useEffect(() => { fetchAllData(); }, []);
 
@@ -217,7 +254,7 @@ const ResultsDashboardPro = () => {
 
   const availableStages = useMemo(() => [...new Set(events.map(e => getEventStage(e)))].filter(s => s !== 'Unknown').sort(), [events]);
 
-  const buildStandings = (results) => {
+  const buildStandings = useCallback((results) => {
     const map = {};
     for (const r of results) {
       const p = r.parish || 'Unknown';
@@ -229,9 +266,9 @@ const ResultsDashboardPro = () => {
       m.eventsSet.add(r.eventName);
     }
     return Object.values(map).map(p => ({ ...p, eventsCount: p.eventsSet.size, division: parishDivisionMap[p.parish] || 'C', families: parishFamilyMap[p.parish] || 0 })).sort((a, b) => b.totalPoints - a.totalPoints);
-  };
+  }, [parishDivisionMap, parishFamilyMap]);
 
-  const parishStandings = useMemo(() => buildStandings(filteredResults), [filteredResults, parishDivisionMap, parishFamilyMap]);
+  const parishStandings = useMemo(() => buildStandings(filteredResults), [filteredResults, buildStandings]);
 
   const divisionStandings = useMemo(() => {
     let base = allResults;
@@ -240,7 +277,7 @@ const ResultsDashboardPro = () => {
     const all = buildStandings(base); const result = {};
     DIVISION_CONFIG.forEach(d => { result[d.key] = all.filter(p => p.division === d.key); });
     return result;
-  }, [allResults, selectedSection, selectedEvent, parishDivisionMap, parishFamilyMap]);
+  }, [allResults, selectedSection, selectedEvent, buildStandings]);
 
   const eventResults = useMemo(() => {
     if (activeView !== 'events') return [];
@@ -251,7 +288,7 @@ const ResultsDashboardPro = () => {
         map[r.eventName].winners.push({ position: r.position, name: r.participantType === 'Group' ? r.parish : r.participantName, parish: r.parish, grade: r.grade, totalPoints: r.totalPoints });
     });
     let result = Object.values(map).map(e => ({ ...e, winners: e.winners.sort((a, b) => +a.position - +b.position) }));
-    if (searchQuery) { const q = searchQuery.toLowerCase(); result = result.filter(e => e.eventName.toLowerCase().includes(q) || e.winners.some(w => w.name.toLowerCase().includes(q) || w.parish.toLowerCase().includes(q))); }
+    if (searchQuery) { const q = searchQuery.toLowerCase(); result = result.filter(e => e.eventName.toLowerCase().includes(q) || e.winners.some(w => w.name?.toLowerCase().includes(q) || w.parish?.toLowerCase().includes(q))); }
     return result.sort((a, b) => a.section.localeCompare(b.section) || a.eventName.localeCompare(b.eventName));
   }, [filteredResults, searchQuery, activeView]);
 
@@ -314,81 +351,45 @@ const ResultsDashboardPro = () => {
   // ====== PARISH DETAIL DATA ======
   const parishDetailData = useMemo(() => {
     if (!selectedParishName) return null;
-    const results = allResults.filter(r => r.parish === selectedParishName);
+    let results = allResults.filter(r => r.parish === selectedParishName);
+    // When modal is opened with a section filter, only show that section's data
+    if (modalSectionFilter) results = results.filter(r => r.section === modalSectionFilter);
     const division = parishDivisionMap[selectedParishName] || 'C';
     const families = parishFamilyMap[selectedParishName] || 0;
     const dc = getDivConfig(division);
 
     let totalPoints = 0, firsts = 0, seconds = 0, thirds = 0, gradeA = 0, gradeB = 0, gradeC = 0;
-    const prizeList = [];
-    const sectionPoints = {};
+    const prizeList = []; const sectionPoints = {};
 
     results.forEach(r => {
       totalPoints += r.totalPoints || 0;
-      if (r.position === '1') firsts++;
-      else if (r.position === '2') seconds++;
-      else if (r.position === '3') thirds++;
-      if (r.grade === 'A') gradeA++;
-      else if (r.grade === 'B') gradeB++;
-      else if (r.grade === 'C') gradeC++;
-
+      if (r.position === '1') firsts++; else if (r.position === '2') seconds++; else if (r.position === '3') thirds++;
+      if (r.grade === 'A') gradeA++; else if (r.grade === 'B') gradeB++; else if (r.grade === 'C') gradeC++;
       if (!sectionPoints[r.section]) sectionPoints[r.section] = 0;
       sectionPoints[r.section] += r.totalPoints || 0;
-
       if (r.position && ['1', '2', '3'].includes(r.position)) {
-        prizeList.push({
-          eventName: r.eventName,
-          section: r.section,
-          eventType: r.eventType,
-          position: r.position,
-          participantName: r.participantType === 'Group' ? 'Group' : (r.participantName || '—'),
-          grade: r.grade,
-          totalPoints: r.totalPoints || 0,
-        });
+        prizeList.push({ eventName: r.eventName, section: r.section, eventType: r.eventType, position: r.position, participantName: r.participantType === 'Group' ? 'Group' : (r.participantName || '—'), grade: r.grade, totalPoints: r.totalPoints || 0 });
       }
     });
 
     prizeList.sort((a, b) => +a.position - +b.position || a.section.localeCompare(b.section) || a.eventName.localeCompare(b.eventName));
 
-    // Also include graded (non-prize) entries
     const gradedList = results.filter(r => !r.position || !['1', '2', '3'].includes(r.position)).map(r => ({
-      eventName: r.eventName,
-      section: r.section,
-      eventType: r.eventType,
-      participantName: r.participantType === 'Group' ? 'Group' : (r.participantName || '—'),
-      grade: r.grade,
-      totalPoints: r.totalPoints || 0,
+      eventName: r.eventName, section: r.section, eventType: r.eventType, participantName: r.participantType === 'Group' ? 'Group' : (r.participantName || '—'), grade: r.grade, totalPoints: r.totalPoints || 0,
     })).sort((a, b) => a.section.localeCompare(b.section) || a.eventName.localeCompare(b.eventName));
 
-    return { division, families, dc, totalPoints, firsts, seconds, thirds, gradeA, gradeB, gradeC, prizeList, gradedList, sectionPoints, totalEntries: results.length };
-  }, [selectedParishName, allResults, parishDivisionMap, parishFamilyMap]);
+    return { division, families, dc, totalPoints, firsts, seconds, thirds, gradeA, gradeB, gradeC, prizeList, gradedList, sectionPoints, totalEntries: results.length, filteredBySection: modalSectionFilter };
+  }, [selectedParishName, allResults, parishDivisionMap, parishFamilyMap, modalSectionFilter]);
 
-  const openParishModal = (parishName) => {
-    setSelectedParishName(parishName);
-    setParishModalOpen(true);
-  };
+  const openParishModal = (parishName, section = '') => { setSelectedParishName(parishName); setModalSectionFilter(section); setParishModalOpen(true); };
+  const closeParishModal = () => { setParishModalOpen(false); setSelectedParishName(''); setModalSectionFilter(''); };
 
-  const closeParishModal = () => {
-    setParishModalOpen(false);
-    setSelectedParishName('');
-  };
-
-  // Clickable parish name component
   const ParishName = ({ name, sx = {} }) => (
     <Typography
       component="span"
       onClick={(e) => { e.stopPropagation(); openParishModal(name); }}
-      sx={{
-        cursor: 'pointer',
-        fontWeight: 'inherit',
-        fontSize: 'inherit',
-        color: 'inherit',
-        '&:hover': { color: '#2563EB', textDecoration: 'underline' },
-        ...sx,
-      }}
-    >
-      {name}
-    </Typography>
+      sx={{ cursor: 'pointer', fontWeight: 'inherit', fontSize: 'inherit', color: 'inherit', '&:hover': { color: '#2563EB', textDecoration: 'underline' }, ...sx }}
+    >{name}</Typography>
   );
 
   // ====== PARISH-WISE PRIZE LIST DATA ======
@@ -400,9 +401,7 @@ const ResultsDashboardPro = () => {
       if (!map[p]) map[p] = { parish: p, division: parishDivisionMap[p] || 'C', families: parishFamilyMap[p] || 0, totalPoints: 0, firsts: 0, seconds: 0, thirds: 0, prizes: [], graded: [] };
       map[p].totalPoints += r.totalPoints || 0;
       const pos = String(r.position || '');
-      if (pos === '1') map[p].firsts++;
-      else if (pos === '2') map[p].seconds++;
-      else if (pos === '3') map[p].thirds++;
+      if (pos === '1') map[p].firsts++; else if (pos === '2') map[p].seconds++; else if (pos === '3') map[p].thirds++;
       if (['1', '2', '3'].includes(pos)) {
         map[p].prizes.push({ eventName: r.eventName, section: r.section, eventType: r.eventType, position: pos, participantName: r.participantType === 'Group' ? 'Group' : (r.participantName || '—'), grade: r.grade, totalPoints: r.totalPoints || 0 });
       } else {
@@ -414,7 +413,6 @@ const ResultsDashboardPro = () => {
       p.prizes.sort((a, b) => +a.position - +b.position || (a.section || '').localeCompare(b.section || '') || (a.eventName || '').localeCompare(b.eventName || ''));
       p.graded.sort((a, b) => (a.section || '').localeCompare(b.section || '') || (a.eventName || '').localeCompare(b.eventName || ''));
     });
-    // Apply filters
     if (selectedSection) list = list.map(p => ({ ...p, prizes: p.prizes.filter(r => r.section === selectedSection), graded: p.graded.filter(r => r.section === selectedSection) })).filter(p => p.prizes.length > 0 || p.graded.length > 0);
     if (selectedDivision) list = list.filter(p => p.division === selectedDivision);
     if (searchQuery) { const q = searchQuery.toLowerCase(); list = list.filter(p => p.parish.toLowerCase().includes(q)); }
@@ -428,166 +426,224 @@ const ResultsDashboardPro = () => {
   const totalMedals = useMemo(() => filteredResults.filter(r => r.position && ['1', '2', '3'].includes(r.position)).length, [filteredResults]);
 
   const views = [
-    { key: 'overview', label: '📊 Overview' }, { key: 'standings', label: '🏆 Standings' },
-    { key: 'events', label: '🎭 Events' }, { key: 'sections', label: '📋 Sections' },
-    { key: 'stages', label: '🎤 Stages' }, { key: 'venues', label: '📍 Venues' },
-    { key: 'parishes', label: '⛪ Parishes' }
+    { key: 'overview', label: 'Overview', icon: '📊' },
+    { key: 'standings', label: 'Standings', icon: '🏆' },
+    { key: 'events', label: 'Events', icon: '🎭' },
+    { key: 'sections', label: 'Sections', icon: '📋' },
+    { key: 'stages', label: 'Stages', icon: '🎤' },
+    { key: 'venues', label: 'Venues', icon: '📍' },
+    { key: 'parishes', label: 'Parishes', icon: '⛪' }
   ];
 
   const resetFilters = () => { setSelectedSection(''); setSelectedEvent(''); setSelectedDivision(''); setSearchQuery(''); setSelectedStage(''); setSelectedVenue(''); };
+  const hasFilters = selectedSection || selectedEvent || searchQuery || selectedDivision || selectedStage || selectedVenue;
+  const filterCount = [selectedSection, selectedEvent, searchQuery, selectedDivision, selectedStage, selectedVenue].filter(Boolean).length;
 
-  // ====== FILTER BAR ======
+  // ====== FILTER DRAWER (Mobile) & INLINE (Desktop) ======
   const filterSelectSx = (color = '#2563EB') => ({
-    minWidth: 160,
+    width: '100%',
     '& .MuiOutlinedInput-root': {
       borderRadius: '12px', background: '#fff', fontSize: '13px', fontWeight: 600,
-      '& fieldset': { borderColor: `${color}30`, borderWidth: '1.5px' },
-      '&:hover fieldset': { borderColor: `${color}60` },
+      '& fieldset': { borderColor: `${color}25`, borderWidth: '1.5px' },
+      '&:hover fieldset': { borderColor: `${color}50` },
       '&.Mui-focused fieldset': { borderColor: color, borderWidth: '2px' },
     },
     '& .MuiInputLabel-root': { fontSize: '13px', fontWeight: 600, color: '#94A3B8' },
     '& .MuiInputLabel-root.Mui-focused': { color },
-    '& .MuiSelect-icon': { color: `${color}80` },
   });
 
-  const FilterBar = ({ showSearch = false, showDivision = true, showStage = false, showVenue = false }) => (
-    <Box display="flex" gap={1.5} flexWrap="wrap" alignItems="center" sx={{ mb: 2.5, p: 2, borderRadius: 3, background: 'rgba(255,255,255,0.7)', border: '1px solid rgba(0,0,0,0.06)', backdropFilter: 'blur(8px)' }}>
-      <FormControl size="small" sx={filterSelectSx('#2563EB')}>
-        <InputLabel><Box display="flex" alignItems="center" gap={0.5}><Layers size={14} /> Section</Box></InputLabel>
-        <Select value={selectedSection} label="⬜ Section" onChange={e => { setSelectedSection(e.target.value); setSelectedEvent(''); }}>
-          <MenuItem value="">All Sections</MenuItem>
-          {Object.keys(SECTION_CONFIG).map(s => <MenuItem key={s} value={s}>{s}</MenuItem>)}
-        </Select>
-      </FormControl>
-
-      {showStage && (
-        <FormControl size="small" sx={filterSelectSx('#10B981')}>
-          <InputLabel><Box display="flex" alignItems="center" gap={0.5}><Music size={14} /> Stage</Box></InputLabel>
-          <Select value={selectedStage} label="⬜ Stage" onChange={e => setSelectedStage(e.target.value)}>
-            <MenuItem value="">All Stages</MenuItem>
-            {availableStages.map(s => <MenuItem key={s} value={s}>{s}</MenuItem>)}
+  const renderFilterContent = (showSearch = false, showDivision = true, showStage = false, showVenue = false) => (
+    <Box sx={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: 1.5, flexWrap: 'wrap' }}>
+      <Box sx={{ minWidth: isMobile ? '100%' : 160 }}>
+        <FormControl size="small" sx={filterSelectSx('#2563EB')}>
+          <InputLabel>Section</InputLabel>
+          <Select value={selectedSection} label="Section" onChange={e => { setSelectedSection(e.target.value); setSelectedEvent(''); }}>
+            <MenuItem value="">All Sections</MenuItem>
+            {Object.keys(SECTION_CONFIG).map(s => <MenuItem key={s} value={s}>{s}</MenuItem>)}
           </Select>
         </FormControl>
+      </Box>
+
+      {showStage && (
+        <Box sx={{ minWidth: isMobile ? '100%' : 160 }}>
+          <FormControl size="small" sx={filterSelectSx('#10B981')}>
+            <InputLabel>Stage</InputLabel>
+            <Select value={selectedStage} label="Stage" onChange={e => setSelectedStage(e.target.value)}>
+              <MenuItem value="">All Stages</MenuItem>
+              {availableStages.map(s => <MenuItem key={s} value={s}>{s}</MenuItem>)}
+            </Select>
+          </FormControl>
+        </Box>
       )}
 
       {showVenue && availableVenues.length > 0 && (
-        <FormControl size="small" sx={filterSelectSx('#6366F1')}>
-          <InputLabel><Box display="flex" alignItems="center" gap={0.5}><MapPin size={14} /> Venue</Box></InputLabel>
-          <Select value={selectedVenue} label="⬜ Venue" onChange={e => setSelectedVenue(e.target.value)}>
-            <MenuItem value="">All Venues</MenuItem>
-            {availableVenues.map(v => <MenuItem key={v.id} value={v.id}>{v.name}</MenuItem>)}
-          </Select>
-        </FormControl>
+        <Box sx={{ minWidth: isMobile ? '100%' : 160 }}>
+          <FormControl size="small" sx={filterSelectSx('#6366F1')}>
+            <InputLabel>Venue</InputLabel>
+            <Select value={selectedVenue} label="Venue" onChange={e => setSelectedVenue(e.target.value)}>
+              <MenuItem value="">All Venues</MenuItem>
+              {availableVenues.map(v => <MenuItem key={v.id} value={v.id}>{v.name}</MenuItem>)}
+            </Select>
+          </FormControl>
+        </Box>
       )}
 
       {!showStage && !showVenue && (
-        <FormControl size="small" sx={filterSelectSx('#D97706')}>
-          <InputLabel><Box display="flex" alignItems="center" gap={0.5}><Grid3x3 size={14} /> Event</Box></InputLabel>
-          <Select value={selectedEvent} label="⬜ Event" onChange={e => setSelectedEvent(e.target.value)}>
-            <MenuItem value="">All Events</MenuItem>
-            {filteredUniqueEvents.map(ev => <MenuItem key={ev} value={ev}>{ev}</MenuItem>)}
-          </Select>
-        </FormControl>
+        <Box sx={{ minWidth: isMobile ? '100%' : 160 }}>
+          <FormControl size="small" sx={filterSelectSx('#D97706')}>
+            <InputLabel>Event</InputLabel>
+            <Select value={selectedEvent} label="Event" onChange={e => setSelectedEvent(e.target.value)}>
+              <MenuItem value="">All Events</MenuItem>
+              {filteredUniqueEvents.map(ev => <MenuItem key={ev} value={ev}>{ev}</MenuItem>)}
+            </Select>
+          </FormControl>
+        </Box>
       )}
 
       {showDivision && !showStage && !showVenue && (
-        <FormControl size="small" sx={filterSelectSx('#EC4899')}>
-          <InputLabel><Box display="flex" alignItems="center" gap={0.5}><Filter size={14} /> Division</Box></InputLabel>
-          <Select value={selectedDivision} label="⬜ Division" onChange={e => setSelectedDivision(e.target.value)}>
-            <MenuItem value="">All Divisions</MenuItem>
-            {DIVISION_CONFIG.map(d => <MenuItem key={d.key} value={d.key}>{d.label}</MenuItem>)}
-          </Select>
-        </FormControl>
+        <Box sx={{ minWidth: isMobile ? '100%' : 160 }}>
+          <FormControl size="small" sx={filterSelectSx('#EC4899')}>
+            <InputLabel>Division</InputLabel>
+            <Select value={selectedDivision} label="Division" onChange={e => setSelectedDivision(e.target.value)}>
+              <MenuItem value="">All Divisions</MenuItem>
+              {DIVISION_CONFIG.map(d => <MenuItem key={d.key} value={d.key}>{d.label}</MenuItem>)}
+            </Select>
+          </FormControl>
+        </Box>
       )}
 
       {showSearch && (
-        <TextField size="small" placeholder="Search..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
-          sx={{
-            minWidth: 200,
-            '& .MuiOutlinedInput-root': { borderRadius: '12px', background: '#fff', fontSize: '13px', '& fieldset': { borderColor: 'rgba(0,0,0,0.1)' }, '&:hover fieldset': { borderColor: '#94A3B8' }, '&.Mui-focused fieldset': { borderColor: '#2563EB', borderWidth: '2px' } }
-          }}
-          InputProps={{ startAdornment: <InputAdornment position="start"><Search size={16} color="#94A3B8" /></InputAdornment> }}
-        />
+        <Box sx={{ minWidth: isMobile ? '100%' : 200 }}>
+          <TextField size="small" placeholder="Search..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} fullWidth
+            sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px', background: '#fff', fontSize: '13px', '& fieldset': { borderColor: 'rgba(0,0,0,0.08)' }, '&.Mui-focused fieldset': { borderColor: '#2563EB', borderWidth: '2px' } } }}
+            InputProps={{ startAdornment: <InputAdornment position="start"><Search size={16} color="#94A3B8" /></InputAdornment> }}
+          />
+        </Box>
       )}
 
-      {(selectedSection || selectedEvent || searchQuery || selectedDivision || selectedStage || selectedVenue) && (
-        <Button size="small" onClick={resetFilters} sx={{ textTransform: 'none', color: '#EF4444', fontWeight: 600, fontSize: '12px', borderRadius: '10px', border: '1.5px solid #EF444430', px: 1.5, '&:hover': { bgcolor: '#FEF2F2', borderColor: '#EF4444' } }}>
-          ✕ Clear
+      {hasFilters && (
+        <Button size="small" onClick={resetFilters} sx={{ textTransform: 'none', color: '#EF4444', fontWeight: 600, fontSize: '12px', borderRadius: '10px', border: '1.5px solid #EF444430', px: 1.5, minHeight: 40, '&:hover': { bgcolor: '#FEF2F2', borderColor: '#EF4444' } }}>
+          ✕ Clear All
         </Button>
       )}
-
-      <Box sx={{ ml: 'auto' }}>
-        <IconButton onClick={fetchAllData} size="small" sx={{ border: '1.5px solid rgba(0,0,0,0.08)', borderRadius: '10px', p: 1, '&:hover': { bgcolor: '#EFF6FF', borderColor: '#2563EB' } }}><RefreshCw size={16} /></IconButton>
-      </Box>
     </Box>
   );
+
+  const renderFilterBar = (showSearch = false, showDivision = true, showStage = false, showVenue = false) => {
+    if (isMobile) {
+      return (
+        <Box sx={{ mb: 2 }}>
+          <Box display="flex" gap={1} alignItems="center">
+            <Button
+              onClick={() => setFilterDrawerOpen(true)}
+              size="small"
+              startIcon={<SlidersHorizontal size={16} />}
+              sx={{
+                textTransform: 'none', fontWeight: 600, fontSize: '13px', borderRadius: '12px',
+                border: hasFilters ? '1.5px solid #2563EB' : '1.5px solid rgba(0,0,0,0.1)',
+                color: hasFilters ? '#2563EB' : '#64748B', px: 2, py: 0.8,
+                bgcolor: hasFilters ? '#EFF6FF' : '#fff',
+                '&:hover': { bgcolor: '#EFF6FF' },
+              }}
+            >
+              Filters {filterCount > 0 && <Chip label={filterCount} size="small" sx={{ ml: 0.5, height: 18, fontSize: '10px', fontWeight: 700, bgcolor: '#2563EB', color: '#fff' }} />}
+            </Button>
+            {showSearch && (
+              <TextField size="small" placeholder="Search..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
+                sx={{ flex: 1, '& .MuiOutlinedInput-root': { borderRadius: '12px', background: '#fff', fontSize: '13px', height: 38, '& fieldset': { borderColor: 'rgba(0,0,0,0.08)' }, '&.Mui-focused fieldset': { borderColor: '#2563EB' } } }}
+                InputProps={{ startAdornment: <InputAdornment position="start"><Search size={14} color="#94A3B8" /></InputAdornment> }}
+              />
+            )}
+            <IconButton onClick={fetchAllData} size="small" sx={{ border: '1.5px solid rgba(0,0,0,0.08)', borderRadius: '10px', width: 38, height: 38, bgcolor: '#fff' }}><RefreshCw size={16} /></IconButton>
+          </Box>
+          {hasFilters && (
+            <Box display="flex" gap={0.5} flexWrap="wrap" mt={1}>
+              {selectedSection && <Chip label={selectedSection} size="small" onDelete={() => setSelectedSection('')} sx={{ height: 24, fontSize: '11px', fontWeight: 600, bgcolor: '#EFF6FF', color: '#2563EB' }} />}
+              {selectedEvent && <Chip label={selectedEvent} size="small" onDelete={() => setSelectedEvent('')} sx={{ height: 24, fontSize: '11px', fontWeight: 600, bgcolor: '#FFFBEB', color: '#D97706' }} />}
+              {selectedDivision && <Chip label={getDivConfig(selectedDivision).label} size="small" onDelete={() => setSelectedDivision('')} sx={{ height: 24, fontSize: '11px', fontWeight: 600, bgcolor: '#FDF2F8', color: '#EC4899' }} />}
+              {selectedStage && <Chip label={selectedStage} size="small" onDelete={() => setSelectedStage('')} sx={{ height: 24, fontSize: '11px', fontWeight: 600, bgcolor: '#ECFDF5', color: '#10B981' }} />}
+              {selectedVenue && <Chip label="Venue" size="small" onDelete={() => setSelectedVenue('')} sx={{ height: 24, fontSize: '11px', fontWeight: 600, bgcolor: '#F3E8FF', color: '#7C3AED' }} />}
+            </Box>
+          )}
+
+          <Drawer anchor="bottom" open={filterDrawerOpen} onClose={() => setFilterDrawerOpen(false)}
+            PaperProps={{ sx: { borderRadius: '20px 20px 0 0', maxHeight: '70vh', p: 3 } }}>
+            <Box sx={{ width: 40, height: 4, borderRadius: 2, bgcolor: '#CBD5E1', mx: 'auto', mb: 3 }} />
+            <Typography sx={{ fontWeight: 700, fontSize: '17px', mb: 2 }}>Filters</Typography>
+            {renderFilterContent(showSearch, showDivision, showStage, showVenue)}
+            <Button fullWidth variant="contained" onClick={() => setFilterDrawerOpen(false)}
+              sx={{ mt: 3, textTransform: 'none', fontWeight: 600, borderRadius: '12px', py: 1.2, bgcolor: '#2563EB', '&:hover': { bgcolor: '#1E40AF' } }}>
+              Apply Filters
+            </Button>
+          </Drawer>
+        </Box>
+      );
+    }
+
+    return (
+      <GlassCard sx={{ mb: 2.5, p: 2 }}>
+        <Box display="flex" alignItems="center" gap={1.5} flexWrap="wrap">
+          <Box sx={{ flex: 1, display: 'flex', gap: 1.5, flexWrap: 'wrap', alignItems: 'center' }}>
+            {renderFilterContent(showSearch, showDivision, showStage, showVenue)}
+          </Box>
+          <IconButton onClick={fetchAllData} size="small" sx={{ border: '1.5px solid rgba(0,0,0,0.08)', borderRadius: '10px', p: 1, '&:hover': { bgcolor: '#EFF6FF', borderColor: '#2563EB' } }}><RefreshCw size={16} /></IconButton>
+        </Box>
+      </GlassCard>
+    );
+  };
 
   // ====== DIVISION BLOCK ======
   const DivisionBlock = ({ divKey, standings }) => {
     const conf = getDivConfig(divKey); const dMax = standings[0]?.totalPoints || 1; const top3 = standings.slice(0, 3);
     return (
-      <ChartCard sx={{ mb: 2.5, p: 0 }}>
-        <Box sx={{ p: 2.5, borderBottom: '1px solid rgba(0,0,0,0.06)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Box display="flex" alignItems="center" gap={1.5}>
-            <IconBox color={conf.color} sx={{ width: 36, height: 36, borderRadius: 10 }}><Layers size={18} /></IconBox>
-            <Box><Typography sx={{ fontWeight: 700, fontSize: '16px', color: '#1a202c' }}>{conf.label}</Typography><Typography sx={{ fontSize: '11px', color: '#94A3B8' }}>{conf.desc} · {standings.length} parishes</Typography></Box>
+      <GlassCard sx={{ mb: 2.5 }}>
+        <Box sx={{ p: 2, borderBottom: '1px solid rgba(0,0,0,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Box display="flex" alignItems="center" gap={1.2}>
+            <IconBox color={conf.color} sx={{ width: 34, height: 34, borderRadius: 9 }}><Layers size={16} /></IconBox>
+            <Box><Typography sx={{ fontWeight: 700, fontSize: '15px', color: '#1a202c' }}>{conf.label}</Typography><Typography sx={{ fontSize: '10px', color: '#94A3B8' }}>{conf.desc} · {standings.length} parishes</Typography></Box>
           </Box>
-          {top3[0] && <Box display="flex" alignItems="center" gap={1}><Trophy size={16} color={conf.color} /><ParishName name={top3[0].parish} sx={{ fontWeight: 700, fontSize: '14px', color: conf.color }} /></Box>}
+          {top3[0] && <Typography sx={{ fontWeight: 700, fontSize: '12px', color: conf.color }}>🏆 {top3[0].parish}</Typography>}
         </Box>
         {top3.length > 0 && (
-          <Box sx={{ p: 2, borderBottom: '1px solid rgba(0,0,0,0.04)' }}>
-            <Grid container spacing={1.5}>{top3.map((p, idx) => (
+          <Box sx={{ p: 1.5, borderBottom: '1px solid rgba(0,0,0,0.04)' }}>
+            <Grid container spacing={1}>{top3.map((p, idx) => (
               <Grid item xs={4} key={p.parish}>
-                <Box onClick={() => openParishModal(p.parish)} sx={{ textAlign: 'center', p: 1.5, borderRadius: 3, cursor: 'pointer', background: idx === 0 ? `${conf.color}08` : 'rgba(0,0,0,0.02)', border: idx === 0 ? `1px solid ${conf.color}25` : '1px solid rgba(0,0,0,0.04)', '&:hover': { borderColor: conf.color, background: `${conf.color}10` } }}>
-                  <Typography sx={{ fontSize: '20px', mb: 0.3 }}>{['🥇', '🥈', '🥉'][idx]}</Typography>
-                  <Typography sx={{ fontWeight: 700, fontSize: '13px', color: '#1a202c' }}>{p.parish}</Typography>
-                  <Typography sx={{ fontWeight: 800, fontSize: '20px', color: conf.color }}>{p.totalPoints}</Typography>
-                  <Typography sx={{ fontSize: '10px', color: '#94A3B8' }}>{p.families} families · {p.firsts}🥇{p.seconds}🥈{p.thirds}🥉</Typography>
+                <Box onClick={() => openParishModal(p.parish)} sx={{
+                  textAlign: 'center', p: 1.2, borderRadius: 3, cursor: 'pointer',
+                  background: idx === 0 ? `${conf.color}08` : 'rgba(0,0,0,0.02)',
+                  border: idx === 0 ? `1.5px solid ${conf.color}25` : '1px solid rgba(0,0,0,0.04)',
+                  '&:active': { transform: 'scale(0.97)' }, transition: 'transform 0.1s',
+                }}>
+                  <Typography sx={{ fontSize: '18px', mb: 0.2 }}>{['🥇', '🥈', '🥉'][idx]}</Typography>
+                  <Typography sx={{ fontWeight: 700, fontSize: isSmall ? '11px' : '12px', color: '#1a202c', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.parish}</Typography>
+                  <Typography sx={{ fontWeight: 800, fontSize: '18px', color: conf.color }}>{p.totalPoints}</Typography>
+                  <Typography sx={{ fontSize: '9px', color: '#94A3B8' }}>{p.firsts}🥇 {p.seconds}🥈 {p.thirds}🥉</Typography>
                 </Box>
               </Grid>
             ))}</Grid>
           </Box>
         )}
-        <Box sx={{ p: 2.5 }}>{standings.map((p, idx) => {
+        <Box sx={{ p: 2 }}>{standings.map((p, idx) => {
           const pct = dMax > 0 ? (p.totalPoints / dMax) * 100 : 0;
           return (
-            <Box key={p.parish} sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 0.8 }}>
-              <Typography sx={{ width: 22, fontWeight: 700, fontSize: '12px', color: idx < 3 ? conf.color : '#94A3B8', textAlign: 'right' }}>{idx + 1}</Typography>
-              <ParishName name={p.parish} sx={{ width: 130, fontWeight: idx < 3 ? 700 : 500, fontSize: '12px', color: '#1a202c', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }} />
-              <Box sx={{ flex: 1, height: 20, background: 'rgba(0,0,0,0.04)', borderRadius: '3px', overflow: 'hidden', position: 'relative' }}>
-                <Box sx={{ width: `${pct}%`, height: '100%', borderRadius: '3px', background: idx < 3 ? conf.color : '#CBD5E1', transition: 'width 0.8s', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', pr: 0.8 }}>
-                  {pct > 25 && <Typography sx={{ fontSize: '10px', fontWeight: 700, color: '#fff' }}>{p.totalPoints}</Typography>}
+            <Box key={p.parish} onClick={() => openParishModal(p.parish)} sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.7, cursor: 'pointer', '&:active': { opacity: 0.7 } }}>
+              <Typography sx={{ width: 20, fontWeight: 700, fontSize: '11px', color: idx < 3 ? conf.color : '#94A3B8', textAlign: 'right' }}>{idx + 1}</Typography>
+              <Typography sx={{ width: isSmall ? 90 : 120, fontWeight: idx < 3 ? 700 : 500, fontSize: '11px', color: '#1a202c', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.parish}</Typography>
+              <Box sx={{ flex: 1, height: 18, background: 'rgba(0,0,0,0.04)', borderRadius: 2, overflow: 'hidden', position: 'relative' }}>
+                <Box sx={{ width: `${pct}%`, height: '100%', borderRadius: 2, background: idx < 3 ? conf.color : '#CBD5E1', transition: 'width 0.6s', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', pr: 0.6 }}>
+                  {pct > 28 && <Typography sx={{ fontSize: '9px', fontWeight: 700, color: '#fff' }}>{p.totalPoints}</Typography>}
                 </Box>
-                {pct <= 25 && <Typography sx={{ position: 'absolute', left: `${Math.max(pct + 1, 2)}%`, top: '50%', transform: 'translateY(-50%)', fontSize: '10px', fontWeight: 600, color: '#64748B' }}>{p.totalPoints}</Typography>}
+                {pct <= 28 && <Typography sx={{ position: 'absolute', left: `${Math.max(pct + 2, 2)}%`, top: '50%', transform: 'translateY(-50%)', fontSize: '9px', fontWeight: 600, color: '#64748B' }}>{p.totalPoints}</Typography>}
               </Box>
-              <Box sx={{ display: 'flex', gap: 0.3, minWidth: 60 }}>
-                {p.firsts > 0 && <Typography sx={{ fontSize: '10px' }}>🥇{p.firsts}</Typography>}
-                {p.seconds > 0 && <Typography sx={{ fontSize: '10px' }}>🥈{p.seconds}</Typography>}
-                {p.thirds > 0 && <Typography sx={{ fontSize: '10px' }}>🥉{p.thirds}</Typography>}
+              <Box sx={{ display: 'flex', gap: 0.2, minWidth: isSmall ? 40 : 55 }}>
+                {p.firsts > 0 && <Typography sx={{ fontSize: '9px' }}>🥇{p.firsts}</Typography>}
+                {p.seconds > 0 && <Typography sx={{ fontSize: '9px' }}>🥈{p.seconds}</Typography>}
+                {p.thirds > 0 && <Typography sx={{ fontSize: '9px' }}>🥉{p.thirds}</Typography>}
               </Box>
             </Box>
           );
-        })}{standings.length === 0 && <Typography sx={{ textAlign: 'center', py: 3, color: '#CBD5E1' }}>No parishes</Typography>}</Box>
-      </ChartCard>
-    );
-  };
-
-  // ====== EVENT TABLE ROW HELPER ======
-  const EventTableRow = ({ event, idx, winnersData }) => {
-    const winners = (winnersData || []).sort((a, b) => +a.position - +b.position);
-    const w = pos => winners.find(x => x.position === pos);
-    const isScored = winners.length > 0;
-    return (
-      <TableRow sx={{ bgcolor: isScored ? 'rgba(16,185,129,0.02)' : 'transparent', '&:hover': { background: 'rgba(0,0,0,0.02)' } }}>
-        <TableCell sx={{ color: '#94A3B8' }}>{idx + 1}</TableCell>
-        <TableCell><Box display="flex" alignItems="center" gap={0.5}><Typography sx={{ fontWeight: 600 }}>{event.eventName}</Typography>{isScored && <Chip label="✓" size="small" sx={{ bgcolor: '#ECFDF5', color: '#059669', fontWeight: 700, height: 18, minWidth: 18, '& .MuiChip-label': { px: 0.5 } }} />}</Box></TableCell>
-        <TableCell><Chip label={event.section} size="small" sx={{ bgcolor: '#EFF6FF', color: '#2563EB', fontSize: '11px', fontWeight: 600 }} /></TableCell>
-        <TableCell><Chip label={event.eventType === 'group' ? 'Group' : 'Individual'} size="small" sx={{ bgcolor: event.eventType === 'group' ? '#FDF2F8' : '#ECFDF5', color: event.eventType === 'group' ? '#EC4899' : '#059669', fontSize: '11px', fontWeight: 600 }} /></TableCell>
-        <TableCell><Chip label={event.gender === 'male' ? 'Boys' : event.gender === 'female' ? 'Girls' : 'All'} size="small" sx={{ fontSize: '11px', fontWeight: 600, bgcolor: event.gender === 'male' ? '#EFF6FF' : event.gender === 'female' ? '#FDF2F8' : '#F1F5F9', color: event.gender === 'male' ? '#2563EB' : event.gender === 'female' ? '#EC4899' : '#64748B' }} /></TableCell>
-        {['1', '2', '3'].map(pos => { const wn = w(pos); return (
-          <TableCell key={pos} align="center">{wn ? (<Box><Typography sx={{ fontWeight: 700, fontSize: '13px', color: '#1a202c' }}>{wn.name}</Typography><ParishName name={wn.parish} sx={{ fontSize: '11px', color: '#94A3B8' }} /></Box>) : <Typography sx={{ color: '#E2E8F0' }}>—</Typography>}</TableCell>
-        ); })}
-      </TableRow>
+        })}{standings.length === 0 && <Typography sx={{ textAlign: 'center', py: 3, color: '#CBD5E1', fontSize: '13px' }}>No parishes</Typography>}</Box>
+      </GlassCard>
     );
   };
 
@@ -596,332 +652,389 @@ const ResultsDashboardPro = () => {
     if (!parishDetailData) return null;
     const d = parishDetailData;
     return (
-      <Dialog open={parishModalOpen} onClose={closeParishModal} maxWidth="md" fullWidth
-        PaperProps={{ sx: { borderRadius: 4, maxHeight: '90vh' } }}>
+      <Dialog open={parishModalOpen} onClose={closeParishModal} maxWidth="md" fullWidth fullScreen={isMobile}
+        PaperProps={{ sx: { borderRadius: isMobile ? 0 : 4, maxHeight: isMobile ? '100%' : '90vh' } }}
+        TransitionComponent={isMobile ? Slide : Fade}
+        TransitionProps={isMobile ? { direction: 'up' } : {}}>
         <DialogTitle sx={{ p: 0 }}>
-          <Box sx={{ background: `linear-gradient(135deg, ${d.dc.color} 0%, ${d.dc.color}CC 100%)`, p: 3, color: '#fff', position: 'relative' }}>
-            <IconButton onClick={closeParishModal} sx={{ position: 'absolute', right: 12, top: 12, color: '#fff', bgcolor: 'rgba(255,255,255,0.15)', '&:hover': { bgcolor: 'rgba(255,255,255,0.25)' } }}><X size={18} /></IconButton>
-            <Typography sx={{ fontWeight: 900, fontSize: '24px' }}>{selectedParishName}</Typography>
-            <Box display="flex" gap={2} mt={1} flexWrap="wrap">
-              <Chip label={d.dc.label} size="small" sx={{ bgcolor: 'rgba(255,255,255,0.2)', color: '#fff', fontWeight: 700 }} />
-              {d.families > 0 && <Typography sx={{ fontSize: '13px', opacity: 0.9 }}>{d.families} Families</Typography>}
+          <Box sx={{
+            background: `linear-gradient(135deg, ${d.dc.color} 0%, ${d.dc.color}BB 100%)`,
+            p: isMobile ? 2.5 : 3, color: '#fff', position: 'relative',
+            paddingTop: isMobile ? 'calc(env(safe-area-inset-top) + 20px)' : 3,
+          }}>
+            <IconButton onClick={closeParishModal} sx={{ position: 'absolute', right: 12, top: isMobile ? 'calc(env(safe-area-inset-top) + 8px)' : 12, color: '#fff', bgcolor: 'rgba(255,255,255,0.15)', '&:hover': { bgcolor: 'rgba(255,255,255,0.25)' } }}><X size={18} /></IconButton>
+            <Typography sx={{ fontWeight: 900, fontSize: isMobile ? '20px' : '24px', pr: 5 }}>{selectedParishName}</Typography>
+            <Box display="flex" gap={1.5} mt={0.8} flexWrap="wrap" alignItems="center">
+              <Chip label={d.dc.label} size="small" sx={{ bgcolor: 'rgba(255,255,255,0.2)', color: '#fff', fontWeight: 700, height: 22 }} />
+              {d.families > 0 && <Typography sx={{ fontSize: '12px', opacity: 0.85 }}>{d.families} Families</Typography>}
+              {d.filteredBySection && <Chip label={`Section: ${d.filteredBySection}`} size="small" sx={{ bgcolor: 'rgba(255,255,255,0.25)', color: '#fff', fontWeight: 700, height: 22 }} />}
             </Box>
-            {/* Summary stats row */}
-            <Box display="flex" gap={3} mt={2} flexWrap="wrap">
-              <Box sx={{ textAlign: 'center' }}>
-                <Typography sx={{ fontWeight: 900, fontSize: '28px' }}>{d.totalPoints}</Typography>
-                <Typography sx={{ fontSize: '11px', opacity: 0.8 }}>Total Points</Typography>
-              </Box>
-              <Box sx={{ textAlign: 'center' }}>
-                <Typography sx={{ fontWeight: 900, fontSize: '28px' }}>{d.firsts + d.seconds + d.thirds}</Typography>
-                <Typography sx={{ fontSize: '11px', opacity: 0.8 }}>Medals</Typography>
-              </Box>
-              <Box sx={{ textAlign: 'center' }}>
-                <Typography sx={{ fontWeight: 900, fontSize: '28px' }}>{d.totalEntries}</Typography>
-                <Typography sx={{ fontSize: '11px', opacity: 0.8 }}>Entries</Typography>
-              </Box>
-              <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center', ml: 'auto' }}>
-                {d.firsts > 0 && <Typography sx={{ fontSize: '16px' }}>🥇 {d.firsts}</Typography>}
-                {d.seconds > 0 && <Typography sx={{ fontSize: '16px' }}>🥈 {d.seconds}</Typography>}
-                {d.thirds > 0 && <Typography sx={{ fontSize: '16px' }}>🥉 {d.thirds}</Typography>}
+            <Box display="flex" gap={isSmall ? 2 : 3} mt={2} flexWrap="wrap">
+              {[
+                { val: d.totalPoints, label: 'Points' },
+                { val: d.firsts + d.seconds + d.thirds, label: 'Medals' },
+                { val: d.totalEntries, label: 'Entries' },
+              ].map(s => (
+                <Box key={s.label} sx={{ textAlign: 'center' }}>
+                  <Typography sx={{ fontWeight: 900, fontSize: isSmall ? '22px' : '28px' }}>{s.val}</Typography>
+                  <Typography sx={{ fontSize: '10px', opacity: 0.75, fontWeight: 600 }}>{s.label}</Typography>
+                </Box>
+              ))}
+              <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', ml: 'auto' }}>
+                {d.firsts > 0 && <Typography sx={{ fontSize: '14px' }}>🥇{d.firsts}</Typography>}
+                {d.seconds > 0 && <Typography sx={{ fontSize: '14px' }}>🥈{d.seconds}</Typography>}
+                {d.thirds > 0 && <Typography sx={{ fontSize: '14px' }}>🥉{d.thirds}</Typography>}
               </Box>
             </Box>
           </Box>
         </DialogTitle>
         <DialogContent sx={{ p: 0 }}>
-          {/* Grade summary & section breakdown */}
-          <Box sx={{ p: 2.5, borderBottom: '1px solid rgba(0,0,0,0.06)', display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-            <Box display="flex" gap={1}>
-              <Chip label={`Grade A: ${d.gradeA}`} size="small" sx={{ bgcolor: '#ECFDF5', color: '#059669', fontWeight: 700 }} />
-              <Chip label={`Grade B: ${d.gradeB}`} size="small" sx={{ bgcolor: '#EFF6FF', color: '#2563EB', fontWeight: 700 }} />
-              <Chip label={`Grade C: ${d.gradeC}`} size="small" sx={{ bgcolor: '#FFFBEB', color: '#D97706', fontWeight: 700 }} />
-            </Box>
-            <Box sx={{ ml: 'auto', display: 'flex', gap: 1.5, flexWrap: 'wrap' }}>
+          <Box sx={{ p: 2, borderBottom: '1px solid rgba(0,0,0,0.05)', display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+            <Chip label={`A: ${d.gradeA}`} size="small" sx={{ bgcolor: '#ECFDF5', color: '#059669', fontWeight: 700, height: 22 }} />
+            <Chip label={`B: ${d.gradeB}`} size="small" sx={{ bgcolor: '#EFF6FF', color: '#2563EB', fontWeight: 700, height: 22 }} />
+            <Chip label={`C: ${d.gradeC}`} size="small" sx={{ bgcolor: '#FFFBEB', color: '#D97706', fontWeight: 700, height: 22 }} />
+            <Box sx={{ ml: 'auto', display: 'flex', gap: 1, flexWrap: 'wrap' }}>
               {Object.entries(d.sectionPoints).sort((a, b) => b[1] - a[1]).map(([sec, pts]) => (
-                <Typography key={sec} sx={{ fontSize: '12px', color: '#64748B' }}><strong>{sec}:</strong> {pts} pts</Typography>
+                <Typography key={sec} sx={{ fontSize: '11px', color: '#64748B' }}><strong>{sec}:</strong> {pts}</Typography>
               ))}
             </Box>
           </Box>
 
-          {/* Prize Winners — Card Layout */}
           {d.prizeList.length > 0 && (
-            <Box sx={{ p: 2.5 }}>
-              <Typography sx={{ fontWeight: 700, fontSize: '15px', color: '#1a202c', mb: 1.5, display: 'flex', alignItems: 'center', gap: 1 }}>
-                <Trophy size={18} color="#D97706" /> Prize Winners ({d.prizeList.length})
+            <Box sx={{ p: 2 }}>
+              <Typography sx={{ fontWeight: 700, fontSize: '14px', color: '#1a202c', mb: 1, display: 'flex', alignItems: 'center', gap: 0.8 }}>
+                <Trophy size={16} color="#D97706" /> Prize Winners ({d.prizeList.length})
               </Typography>
-              <Box sx={{ borderRadius: 2, border: '1px solid rgba(0,0,0,0.06)', overflow: 'hidden' }}>
-                {d.prizeList.map((r, idx) => (
-                  <PrizeRow key={idx} r={r} idx={idx} />
-                ))}
+              <Box sx={{ borderRadius: 2.5, border: '1px solid rgba(0,0,0,0.06)', overflow: 'hidden' }}>
+                {d.prizeList.map((r, idx) => <PrizeCard key={idx} r={r} />)}
               </Box>
             </Box>
           )}
 
-          {/* Other Graded Entries — Card Layout */}
           {d.gradedList.length > 0 && (
-            <Box sx={{ p: 2.5, pt: 0 }}>
-              <Typography sx={{ fontWeight: 700, fontSize: '15px', color: '#1a202c', mb: 1.5, display: 'flex', alignItems: 'center', gap: 1 }}>
-                <Award size={18} color="#6366F1" /> Other Entries ({d.gradedList.length})
+            <Box sx={{ p: 2, pt: 0 }}>
+              <Typography sx={{ fontWeight: 700, fontSize: '14px', color: '#1a202c', mb: 1, display: 'flex', alignItems: 'center', gap: 0.8 }}>
+                <Award size={16} color="#6366F1" /> Other Entries ({d.gradedList.length})
               </Typography>
-              <Box sx={{ borderRadius: 2, border: '1px solid rgba(0,0,0,0.06)', overflow: 'hidden' }}>
-                {d.gradedList.map((r, idx) => (
-                  <GradedRow key={idx} r={r} idx={idx} />
-                ))}
+              <Box sx={{ borderRadius: 2.5, border: '1px solid rgba(0,0,0,0.06)', overflow: 'hidden' }}>
+                {d.gradedList.map((r, idx) => <GradedRow key={idx} r={r} idx={idx} />)}
               </Box>
             </Box>
           )}
 
           {d.prizeList.length === 0 && d.gradedList.length === 0 && (
             <Box sx={{ textAlign: 'center', py: 6 }}>
-              <Typography sx={{ color: '#94A3B8', fontSize: '15px' }}>No results recorded yet for this parish.</Typography>
+              <Typography sx={{ color: '#94A3B8', fontSize: '14px' }}>No results recorded yet.</Typography>
             </Box>
           )}
         </DialogContent>
-        <DialogActions sx={{ p: 2, borderTop: '1px solid rgba(0,0,0,0.06)' }}>
-          <Button onClick={closeParishModal} sx={{ textTransform: 'none', fontWeight: 600, borderRadius: 2 }}>Close</Button>
+        <DialogActions sx={{ p: 1.5, borderTop: '1px solid rgba(0,0,0,0.06)', paddingBottom: isMobile ? 'calc(env(safe-area-inset-bottom) + 12px)' : undefined }}>
+          <Button onClick={closeParishModal} fullWidth={isMobile} variant={isMobile ? 'contained' : 'text'} sx={{ textTransform: 'none', fontWeight: 600, borderRadius: 2.5, py: isMobile ? 1.2 : undefined, bgcolor: isMobile ? '#2563EB' : undefined, '&:hover': isMobile ? { bgcolor: '#1E40AF' } : undefined }}>Close</Button>
         </DialogActions>
       </Dialog>
     );
   };
 
+  // ====== STAT CARD COMPONENT ======
+  const StatCard = ({ label, value, sub, color, icon }) => (
+    <StyledCard>
+      <Box sx={{ p: isMobile ? 2 : 2.5 }}>
+        <Box display="flex" justifyContent="space-between" alignItems="flex-start">
+          <Box>
+            <Typography sx={{ color: '#94A3B8', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px' }}>{label}</Typography>
+            <Typography sx={{ fontSize: isMobile ? '1.6rem' : '2rem', fontWeight: 800, lineHeight: 1.2, mt: 0.3, color: '#1a202c' }}>{value}</Typography>
+            <Typography sx={{ fontSize: '11px', color: '#94A3B8', mt: 0.2 }}>{sub}</Typography>
+          </Box>
+          <IconBox color={color}>{icon}</IconBox>
+        </Box>
+      </Box>
+    </StyledCard>
+  );
+
   return (
     <ThemeProvider theme={theme}>
       <style>{printStyles}</style>
       <DashboardContainer>
-        <Container maxWidth="xl">
+        <Container maxWidth="xl" sx={{ px: isMobile ? 1.5 : 3, pt: isMobile ? 1.5 : 3 }}>
 
           {/* ====== HEADER ====== */}
           <Box className="no-print">
-            <Grid container spacing={3}>
-              <Grid item xs={12}>
-                <StyledCard sx={{
-                  background: 'linear-gradient(135deg, #1E40AF 0%, #3B82F6 50%, #6366F1 100%)',
-                  border: 'none', position: 'relative', overflow: 'hidden',
-                }}>
-                  <StyledCardContent sx={{ position: 'relative', zIndex: 1 }}>
-                    <Box sx={{ position: 'absolute', right: 20, top: '50%', transform: 'translateY(-50%)', opacity: 0.08 }}><Trophy size={120} /></Box>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
-                      <Box>
-                        <Box display="flex" alignItems="center" gap={1} mb={0.5}>
-                          <Box sx={{ width: 8, height: 8, borderRadius: '50%', background: '#34D399', animation: 'pulse 2s infinite', '@keyframes pulse': { '0%,100%': { opacity: 1 }, '50%': { opacity: 0.3 } } }} />
-                          <Typography sx={{ fontSize: '12px', fontWeight: 600, opacity: 0.9, letterSpacing: '1px', color: '#fff' }}>LIVE RESULTS</Typography>
-                        </Box>
-                        <Typography variant="h4" sx={{ fontWeight: 900, lineHeight: 1.1, color: '#fff' }}>ഫൊറോന കലോത്സവം 2026</Typography>
-                        <Typography sx={{ fontSize: '14px', opacity: 0.8, mt: 0.5, color: '#fff' }}>Forane Kalolsavam — Results & Analytics Dashboard</Typography>
-                      </Box>
-                      <IconButton onClick={fetchAllData} sx={{ color: '#fff', border: '1px solid rgba(255,255,255,0.25)', borderRadius: 2 }}><RefreshCw size={18} /></IconButton>
+            <StyledCard sx={{
+              background: 'linear-gradient(135deg, #1E40AF 0%, #2563EB 40%, #6366F1 100%)',
+              border: 'none', position: 'relative', overflow: 'hidden', mb: 2,
+            }}>
+              <Box sx={{ p: isMobile ? 2 : 3, position: 'relative', zIndex: 1 }}>
+                <Box sx={{ position: 'absolute', right: isMobile ? -10 : 20, top: '50%', transform: 'translateY(-50%)', opacity: 0.06 }}><Trophy size={isMobile ? 80 : 120} /></Box>
+                <Box display="flex" justifyContent="space-between" alignItems="center" gap={1}>
+                  <Box>
+                    <Box display="flex" alignItems="center" gap={0.8} mb={0.3}>
+                      <Box sx={{ width: 7, height: 7, borderRadius: '50%', background: '#34D399', animation: 'pulse 2s infinite', '@keyframes pulse': { '0%,100%': { opacity: 1 }, '50%': { opacity: 0.3 } } }} />
+                      <Typography sx={{ fontSize: '10px', fontWeight: 700, letterSpacing: '1.2px', color: 'rgba(255,255,255,0.85)' }}>LIVE RESULTS</Typography>
                     </Box>
-                  </StyledCardContent>
-                </StyledCard>
-              </Grid>
-
-              {/* Tab Navigation */}
-              <Grid item xs={12}>
-                <StyledCard sx={{ p: 0.5, '&:hover': { transform: 'none' } }}>
-                  <Box display="flex" gap={0.5} sx={{ overflowX: 'auto', p: 0.5 }}>
-                    {views.map(v => (
-                      <Button key={v.key} onClick={() => setActiveView(v.key)} disableRipple sx={{
-                        flex: 1, minWidth: 'auto', px: 1.5, py: 1, borderRadius: '10px', textTransform: 'none', fontWeight: 600, fontSize: '13px',
-                        color: activeView === v.key ? '#fff' : '#64748B',
-                        background: activeView === v.key ? '#2563EB' : 'transparent',
-                        boxShadow: activeView === v.key ? '0 2px 8px rgba(37,99,235,0.3)' : 'none',
-                        '&:hover': { background: activeView === v.key ? '#1E40AF' : 'rgba(0,0,0,0.04)' }
-                      }}>{v.label}</Button>
-                    ))}
+                    <Typography sx={{ fontWeight: 900, fontSize: isMobile ? '18px' : '28px', lineHeight: 1.15, color: '#fff' }}>ഫൊറോന കലോത്സവം 2026</Typography>
+                    {!isMobile && <Typography sx={{ fontSize: '13px', opacity: 0.75, mt: 0.3, color: '#fff' }}>Forane Kalolsavam — Results & Analytics</Typography>}
                   </Box>
-                </StyledCard>
-              </Grid>
-            </Grid>
+                  <IconButton onClick={fetchAllData} sx={{ color: '#fff', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 2.5, width: 40, height: 40 }}><RefreshCw size={16} /></IconButton>
+                </Box>
+              </Box>
+            </StyledCard>
+
+            {/* Desktop Tab Navigation */}
+            {!isMobile && (
+              <GlassCard sx={{ p: 0.5, mb: 2 }}>
+                <Box display="flex" gap={0.4}>
+                  {views.map(v => (
+                    <Button key={v.key} onClick={() => setActiveView(v.key)} disableRipple sx={{
+                      flex: 1, minWidth: 'auto', px: 1.5, py: 0.9, borderRadius: '10px', textTransform: 'none', fontWeight: 600, fontSize: '13px',
+                      color: activeView === v.key ? '#fff' : '#64748B',
+                      background: activeView === v.key ? '#2563EB' : 'transparent',
+                      boxShadow: activeView === v.key ? '0 2px 8px rgba(37,99,235,0.25)' : 'none',
+                      '&:hover': { background: activeView === v.key ? '#1E40AF' : 'rgba(0,0,0,0.04)' }
+                    }}>{v.icon} {v.label}</Button>
+                  ))}
+                </Box>
+              </GlassCard>
+            )}
           </Box>
 
-          {isLoading ? <Box display="flex" justifyContent="center" py={12}><CircularProgress /></Box> : (
-            <Box className="print-area" sx={{ mt: 3 }}>
+          {isLoading ? (
+            <Box display="flex" flexDirection="column" alignItems="center" justifyContent="center" py={12} gap={2}>
+              <CircularProgress size={36} sx={{ color: '#2563EB' }} />
+              <Typography sx={{ fontSize: '13px', color: '#94A3B8', fontWeight: 500 }}>Loading results...</Typography>
+            </Box>
+          ) : (
+            <Box className="print-area">
 
               {/* ===== OVERVIEW ===== */}
               {activeView === 'overview' && (
-                <Grid container spacing={3}>
-                  <Grid item xs={12}><FilterBar /></Grid>
-
-                  {/* Stat Cards */}
-                  <Grid item xs={6} md={3}>
-                    <StyledCard><StyledCardContent><StatWrapper><Box>
-                      <Typography sx={{ color: 'text.secondary', fontSize: '0.875rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Total Events</Typography>
-                      <StatValue>{totalEvents_n}</StatValue>
-                      <Typography variant="caption" color="textSecondary">{scoredEventsCount} scored</Typography>
-                    </Box><IconBox color="#2563EB"><Target size={24} /></IconBox></StatWrapper></StyledCardContent></StyledCard>
-                  </Grid>
-                  <Grid item xs={6} md={3}>
-                    <StyledCard><StyledCardContent><StatWrapper><Box>
-                      <Typography sx={{ color: 'text.secondary', fontSize: '0.875rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Participants</Typography>
-                      <StatValue>{totalParticipants}</StatValue>
-                      <Typography variant="caption" color="textSecondary">entries recorded</Typography>
-                    </Box><IconBox color="#6366F1"><Users size={24} /></IconBox></StatWrapper></StyledCardContent></StyledCard>
-                  </Grid>
-                  <Grid item xs={6} md={3}>
-                    <StyledCard><StyledCardContent><StatWrapper><Box>
-                      <Typography sx={{ color: 'text.secondary', fontSize: '0.875rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Parishes</Typography>
-                      <StatValue>{parishStandings.length}</StatValue>
-                      <Typography variant="caption" color="textSecondary">competing</Typography>
-                    </Box><IconBox color="#10B981"><BarChart3 size={24} /></IconBox></StatWrapper></StyledCardContent></StyledCard>
-                  </Grid>
-                  <Grid item xs={6} md={3}>
-                    <StyledCard><StyledCardContent><StatWrapper><Box>
-                      <Typography sx={{ color: 'text.secondary', fontSize: '0.875rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Medals</Typography>
-                      <StatValue>{totalMedals}</StatValue>
-                      <Typography variant="caption" color="textSecondary">gold · silver · bronze</Typography>
-                    </Box><IconBox color="#D97706"><Award size={24} /></IconBox></StatWrapper></StyledCardContent></StyledCard>
+                <Box>
+                  {renderFilterBar()}
+                  <Grid container spacing={isMobile ? 1.5 : 2.5} sx={{ mb: isMobile ? 2 : 3 }}>
+                    <Grid item xs={6} md={3}><StatCard label="Events" value={totalEvents_n} sub={`${scoredEventsCount} scored`} color="#2563EB" icon={<Target size={22} />} /></Grid>
+                    <Grid item xs={6} md={3}><StatCard label="Participants" value={totalParticipants} sub="entries" color="#6366F1" icon={<Users size={22} />} /></Grid>
+                    <Grid item xs={6} md={3}><StatCard label="Parishes" value={parishStandings.length} sub="competing" color="#10B981" icon={<BarChart3 size={22} />} /></Grid>
+                    <Grid item xs={6} md={3}><StatCard label="Medals" value={totalMedals} sub="🥇🥈🥉" color="#D97706" icon={<Award size={22} />} /></Grid>
                   </Grid>
 
                   {/* Overall Rankings */}
-                  <Grid item xs={12}>
-                    <ChartCard>
-                      <Typography sx={{ fontWeight: 700, fontSize: '1.15rem', color: '#1a202c', mb: 2.5 }}>Overall Parish Rankings</Typography>
-                      {parishStandings.map((p, idx) => {
-                        const pct = maxPoints > 0 ? (p.totalPoints / maxPoints) * 100 : 0; const dc = getDivConfig(p.division);
-                        return (
-                          <Box key={p.parish} sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1 }}>
-                            <Typography sx={{ width: 22, fontWeight: 700, fontSize: '12px', color: idx < 3 ? '#2563EB' : '#94A3B8', textAlign: 'right' }}>{idx + 1}</Typography>
-                            <ParishName name={p.parish} sx={{ width: 130, fontWeight: idx < 3 ? 700 : 500, fontSize: '13px', color: '#1a202c', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }} />
-                            <Chip label={dc.label.replace('Division ', '')} size="small" sx={{ fontWeight: 700, fontSize: '10px', bgcolor: `${dc.color}12`, color: dc.color, height: 20, minWidth: 24 }} />
-                            <Box sx={{ flex: 1, height: 24, background: 'rgba(0,0,0,0.04)', borderRadius: '6px', overflow: 'hidden', position: 'relative' }}>
-                              <Box sx={{ width: `${pct}%`, height: '100%', borderRadius: '6px', background: idx === 0 ? 'linear-gradient(90deg, #2563EB, #3B82F6)' : idx === 1 ? 'linear-gradient(90deg, #6366F1, #818CF8)' : idx === 2 ? 'linear-gradient(90deg, #10B981, #34D399)' : '#CBD5E1', transition: 'width 0.8s', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', pr: 1 }}>
-                                {pct > 20 && <Typography sx={{ fontSize: '11px', fontWeight: 700, color: '#fff' }}>{p.totalPoints}</Typography>}
-                              </Box>
-                              {pct <= 20 && <Typography sx={{ position: 'absolute', left: `${pct + 1}%`, top: '50%', transform: 'translateY(-50%)', fontSize: '11px', fontWeight: 600, color: '#64748B' }}>{p.totalPoints}</Typography>}
+                  <GlassCard sx={{ p: isMobile ? 1.5 : 2.5, mb: isMobile ? 2 : 3 }}>
+                    <Typography sx={{ fontWeight: 700, fontSize: '15px', color: '#1a202c', mb: 2 }}>Overall Parish Rankings</Typography>
+                    {parishStandings.map((p, idx) => {
+                      const pct = maxPoints > 0 ? (p.totalPoints / maxPoints) * 100 : 0; const dc = getDivConfig(p.division);
+                      return (
+                        <Box key={p.parish} onClick={() => openParishModal(p.parish)} sx={{ display: 'flex', alignItems: 'center', gap: isMobile ? 0.8 : 1.5, mb: 0.8, cursor: 'pointer', '&:active': { opacity: 0.7 } }}>
+                          <Typography sx={{ width: 20, fontWeight: 700, fontSize: '11px', color: idx < 3 ? '#2563EB' : '#94A3B8', textAlign: 'right' }}>{idx + 1}</Typography>
+                          <Typography sx={{ width: isSmall ? 80 : 120, fontWeight: idx < 3 ? 700 : 500, fontSize: isSmall ? '11px' : '12px', color: '#1a202c', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.parish}</Typography>
+                          {!isSmall && <Chip label={dc.label.replace('Division ', '')} size="small" sx={{ fontWeight: 700, fontSize: '9px', bgcolor: `${dc.color}10`, color: dc.color, height: 18, minWidth: 22 }} />}
+                          <Box sx={{ flex: 1, height: 20, background: 'rgba(0,0,0,0.04)', borderRadius: 2, overflow: 'hidden', position: 'relative' }}>
+                            <Box sx={{ width: `${pct}%`, height: '100%', borderRadius: 2, background: idx === 0 ? 'linear-gradient(90deg, #2563EB, #3B82F6)' : idx === 1 ? 'linear-gradient(90deg, #6366F1, #818CF8)' : idx === 2 ? 'linear-gradient(90deg, #10B981, #34D399)' : '#CBD5E1', transition: 'width 0.6s', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', pr: 0.8 }}>
+                              {pct > 22 && <Typography sx={{ fontSize: '10px', fontWeight: 700, color: '#fff' }}>{p.totalPoints}</Typography>}
                             </Box>
-                            <Box sx={{ display: 'flex', gap: 0.5, minWidth: 65 }}>
-                              {p.firsts > 0 && <Typography sx={{ fontSize: '11px' }}>🥇{p.firsts}</Typography>}
-                              {p.seconds > 0 && <Typography sx={{ fontSize: '11px' }}>🥈{p.seconds}</Typography>}
-                              {p.thirds > 0 && <Typography sx={{ fontSize: '11px' }}>🥉{p.thirds}</Typography>}
-                            </Box>
+                            {pct <= 22 && <Typography sx={{ position: 'absolute', left: `${pct + 2}%`, top: '50%', transform: 'translateY(-50%)', fontSize: '10px', fontWeight: 600, color: '#64748B' }}>{p.totalPoints}</Typography>}
                           </Box>
-                        );
-                      })}
-                    </ChartCard>
-                  </Grid>
+                          <Box sx={{ display: 'flex', gap: 0.3, minWidth: isSmall ? 35 : 55 }}>
+                            {p.firsts > 0 && <Typography sx={{ fontSize: '10px' }}>🥇{p.firsts}</Typography>}
+                            {p.seconds > 0 && <Typography sx={{ fontSize: '10px' }}>🥈{p.seconds}</Typography>}
+                            {p.thirds > 0 && <Typography sx={{ fontSize: '10px' }}>🥉{p.thirds}</Typography>}
+                          </Box>
+                        </Box>
+                      );
+                    })}
+                  </GlassCard>
 
                   {/* Section Progress */}
-                  <Grid item xs={12}>
-                    <ChartCard>
-                      <Typography sx={{ fontWeight: 700, fontSize: '1.15rem', color: '#1a202c', mb: 2.5 }}>Section Progress</Typography>
-                      {sectionSummary.map((sec, i) => {
-                        const pct = sec.totalEventsCount > 0 ? Math.round((sec.scoredEventsCount / sec.totalEventsCount) * 100) : 0; const topP = sec.parishStandings[0];
-                        return (
-                          <Box key={sec.section} sx={{ mb: 2.5 }}>
-                            <Box display="flex" justifyContent="space-between" mb={0.5}>
-                              <Box><Typography sx={{ fontWeight: 700, fontSize: '14px', color: '#1a202c' }}>{sec.section}</Typography><Typography sx={{ fontSize: '11px', color: '#94A3B8' }}>{SECTION_CONFIG[sec.section]}</Typography></Box>
-                              <Chip label={`${pct}%`} size="small" sx={{ fontWeight: 700, bgcolor: `${COLORS[i]}15`, color: COLORS[i] }} />
-                            </Box>
-                            <Box sx={{ width: '100%', height: 8, borderRadius: 4, background: 'rgba(0,0,0,0.04)', mb: 0.8 }}><Box sx={{ width: `${pct}%`, height: '100%', borderRadius: 4, background: COLORS[i], transition: 'width 1s' }} /></Box>
-                            <Box display="flex" justifyContent="space-between"><Typography sx={{ fontSize: '11px', color: '#94A3B8' }}>{sec.scoredEventsCount}/{sec.totalEventsCount} events</Typography>{topP && <Typography sx={{ fontSize: '11px', fontWeight: 600, color: COLORS[i] }}>🏆 <ParishName name={topP.parish} sx={{ fontSize: '11px', fontWeight: 600, color: COLORS[i], display: 'inline' }} /></Typography>}</Box>
+                  <GlassCard sx={{ p: isMobile ? 1.5 : 2.5 }}>
+                    <Typography sx={{ fontWeight: 700, fontSize: '15px', color: '#1a202c', mb: 2 }}>Section Progress</Typography>
+                    {sectionSummary.map((sec, i) => {
+                      const pct = sec.totalEventsCount > 0 ? Math.round((sec.scoredEventsCount / sec.totalEventsCount) * 100) : 0; const topP = sec.parishStandings[0];
+                      return (
+                        <Box key={sec.section} sx={{ mb: 2.5 }}>
+                          <Box display="flex" justifyContent="space-between" mb={0.5}>
+                            <Box><Typography sx={{ fontWeight: 700, fontSize: '13px', color: '#1a202c' }}>{sec.section}</Typography><Typography sx={{ fontSize: '10px', color: '#94A3B8' }}>{SECTION_CONFIG[sec.section]}</Typography></Box>
+                            <Chip label={`${pct}%`} size="small" sx={{ fontWeight: 700, height: 22, bgcolor: `${COLORS[i]}12`, color: COLORS[i] }} />
                           </Box>
-                        );
-                      })}
-                    </ChartCard>
-                  </Grid>
-                </Grid>
+                          <Box sx={{ width: '100%', height: 7, borderRadius: 4, background: 'rgba(0,0,0,0.04)', mb: 0.6 }}><Box sx={{ width: `${pct}%`, height: '100%', borderRadius: 4, background: `linear-gradient(90deg, ${COLORS[i]}, ${COLORS[i]}AA)`, transition: 'width 0.8s' }} /></Box>
+                          <Box display="flex" justifyContent="space-between">
+                            <Typography sx={{ fontSize: '10px', color: '#94A3B8' }}>{sec.scoredEventsCount}/{sec.totalEventsCount} events</Typography>
+                            {topP && <Typography sx={{ fontSize: '10px', fontWeight: 600, color: COLORS[i] }}>🏆 {topP.parish}</Typography>}
+                          </Box>
+                        </Box>
+                      );
+                    })}
+                  </GlassCard>
+                </Box>
               )}
 
               {/* ===== STANDINGS ===== */}
               {activeView === 'standings' && (
                 <Box>
-                  <FilterBar />
-                  <ChartCard sx={{ p: 0, overflow: 'hidden' }}>
-                    <Box sx={{ p: 2.5, borderBottom: '1px solid rgba(0,0,0,0.06)' }}><Typography sx={{ fontWeight: 700, fontSize: '1.15rem', color: '#1a202c' }}>Parish Standings {selectedDivision && `— ${getDivConfig(selectedDivision).label}`}</Typography></Box>
-                    <TableContainer><Table size="small" sx={tableStyles}><TableHead><TableRow>
-                      <TableCell width={50}>#</TableCell><TableCell>Parish</TableCell><TableCell>Division</TableCell><TableCell sx={{ width: '30%' }}>Points</TableCell>
-                      <TableCell align="center">🥇</TableCell><TableCell align="center">🥈</TableCell><TableCell align="center">🥉</TableCell>
-                      <TableCell align="center">A</TableCell><TableCell align="center">B</TableCell><TableCell align="center">C</TableCell><TableCell align="center">Events</TableCell>
-                    </TableRow></TableHead><TableBody>
+                  {renderFilterBar()}
+                  {isMobile ? (
+                    /* Mobile: card layout */
+                    <Box>
+                      <GlassCard sx={{ p: 1.5, mb: 2 }}>
+                        <Typography sx={{ fontWeight: 700, fontSize: '15px', color: '#1a202c', mb: 0.5 }}>
+                          Parish Standings {selectedDivision && `— ${getDivConfig(selectedDivision).label}`}
+                        </Typography>
+                      </GlassCard>
                       {parishStandings.map((p, idx) => {
                         const pct = maxPoints > 0 ? (p.totalPoints / maxPoints) * 100 : 0; const dc = getDivConfig(p.division);
                         return (
-                          <TableRow key={p.parish} sx={{ cursor: 'pointer', '&:hover': { background: 'rgba(37,99,235,0.04)' } }} onClick={() => openParishModal(p.parish)}>
-                            <TableCell><Box display="flex" alignItems="center" gap={0.5}><Typography sx={{ fontWeight: 700, fontSize: '13px', color: idx < 3 ? '#2563EB' : '#94A3B8' }}>{idx + 1}</Typography>{idx < 3 && <span>{['🥇', '🥈', '🥉'][idx]}</span>}</Box></TableCell>
-                            <TableCell sx={{ fontWeight: idx < 3 ? 700 : 500, color: '#2563EB' }}>{p.parish}</TableCell>
-                            <TableCell><Chip label={dc.label.replace('Division ', 'Div ')} size="small" sx={{ fontWeight: 700, fontSize: '10px', bgcolor: `${dc.color}12`, color: dc.color }} /></TableCell>
-                            <TableCell><Box display="flex" alignItems="center" gap={1}><Box sx={{ flex: 1, height: 16, background: 'rgba(0,0,0,0.04)', borderRadius: '3px', overflow: 'hidden' }}><Box sx={{ width: `${pct}%`, height: '100%', borderRadius: '3px', background: idx < 3 ? '#2563EB' : '#CBD5E1' }} /></Box><Typography sx={{ fontWeight: 800, fontSize: '14px', color: '#2563EB', minWidth: 35, textAlign: 'right' }}>{p.totalPoints}</Typography></Box></TableCell>
-                            <TableCell align="center" sx={{ color: '#EAB308', fontWeight: 600 }}>{p.firsts || '-'}</TableCell><TableCell align="center" sx={{ color: '#94A3B8', fontWeight: 600 }}>{p.seconds || '-'}</TableCell><TableCell align="center" sx={{ color: '#B45309', fontWeight: 600 }}>{p.thirds || '-'}</TableCell>
-                            <TableCell align="center"><Chip label={p.gradeA} size="small" sx={{ bgcolor: '#ECFDF5', color: '#059669', fontWeight: 700, minWidth: 28 }} /></TableCell>
-                            <TableCell align="center"><Chip label={p.gradeB} size="small" sx={{ bgcolor: '#EFF6FF', color: '#2563EB', fontWeight: 700, minWidth: 28 }} /></TableCell>
-                            <TableCell align="center"><Chip label={p.gradeC} size="small" sx={{ bgcolor: '#FFFBEB', color: '#D97706', fontWeight: 700, minWidth: 28 }} /></TableCell>
-                            <TableCell align="center">{p.eventsCount}</TableCell>
-                          </TableRow>
+                          <GlassCard key={p.parish} sx={{ mb: 1, p: 0 }} onClick={() => openParishModal(p.parish)}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.2, p: 1.5, cursor: 'pointer', '&:active': { opacity: 0.8 } }}>
+                              <Box sx={{ minWidth: 32, height: 32, borderRadius: 8, bgcolor: idx < 3 ? '#2563EB' : '#F1F5F9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                {idx < 3 ? <Typography sx={{ fontSize: '14px' }}>{['🥇', '🥈', '🥉'][idx]}</Typography> : <Typography sx={{ fontWeight: 700, fontSize: '12px', color: '#94A3B8' }}>{idx + 1}</Typography>}
+                              </Box>
+                              <Box sx={{ flex: 1, minWidth: 0 }}>
+                                <Box display="flex" alignItems="center" gap={0.5}>
+                                  <Typography sx={{ fontWeight: idx < 3 ? 700 : 500, fontSize: '13px', color: '#1a202c', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.parish}</Typography>
+                                  <Chip label={dc.label.replace('Division ', '')} size="small" sx={{ fontWeight: 700, fontSize: '8px', bgcolor: `${dc.color}10`, color: dc.color, height: 16 }} />
+                                </Box>
+                                <Box sx={{ width: '100%', height: 5, background: 'rgba(0,0,0,0.04)', borderRadius: 3, mt: 0.5, overflow: 'hidden' }}>
+                                  <Box sx={{ width: `${pct}%`, height: '100%', borderRadius: 3, background: idx < 3 ? '#2563EB' : '#CBD5E1' }} />
+                                </Box>
+                                <Box display="flex" gap={0.5} mt={0.3}>
+                                  <Typography sx={{ fontSize: '9px', color: '#94A3B8' }}>{p.eventsCount} events</Typography>
+                                  <Typography sx={{ fontSize: '9px', color: '#94A3B8' }}>· A:{p.gradeA} B:{p.gradeB} C:{p.gradeC}</Typography>
+                                </Box>
+                              </Box>
+                              <Box sx={{ textAlign: 'right', flexShrink: 0 }}>
+                                <Typography sx={{ fontWeight: 800, fontSize: '16px', color: '#2563EB' }}>{p.totalPoints}</Typography>
+                                <Box display="flex" gap={0.2} justifyContent="flex-end">
+                                  {p.firsts > 0 && <Typography sx={{ fontSize: '9px' }}>🥇{p.firsts}</Typography>}
+                                  {p.seconds > 0 && <Typography sx={{ fontSize: '9px' }}>🥈{p.seconds}</Typography>}
+                                  {p.thirds > 0 && <Typography sx={{ fontSize: '9px' }}>🥉{p.thirds}</Typography>}
+                                </Box>
+                              </Box>
+                            </Box>
+                          </GlassCard>
                         );
                       })}
-                    </TableBody></Table></TableContainer>
-                  </ChartCard>
+                    </Box>
+                  ) : (
+                    /* Desktop: table */
+                    <GlassCard sx={{ overflow: 'hidden' }}>
+                      <Box sx={{ p: 2.5, borderBottom: '1px solid rgba(0,0,0,0.05)' }}><Typography sx={{ fontWeight: 700, fontSize: '15px', color: '#1a202c' }}>Parish Standings {selectedDivision && `— ${getDivConfig(selectedDivision).label}`}</Typography></Box>
+                      <TableContainer><Table size="small" sx={tableStyles}><TableHead><TableRow>
+                        <TableCell width={50}>#</TableCell><TableCell>Parish</TableCell><TableCell>Division</TableCell><TableCell sx={{ width: '25%' }}>Points</TableCell>
+                        <TableCell align="center">🥇</TableCell><TableCell align="center">🥈</TableCell><TableCell align="center">🥉</TableCell>
+                        <TableCell align="center">A</TableCell><TableCell align="center">B</TableCell><TableCell align="center">C</TableCell><TableCell align="center">Events</TableCell>
+                      </TableRow></TableHead><TableBody>
+                        {parishStandings.map((p, idx) => {
+                          const pct = maxPoints > 0 ? (p.totalPoints / maxPoints) * 100 : 0; const dc = getDivConfig(p.division);
+                          return (
+                            <TableRow key={p.parish} sx={{ cursor: 'pointer', '&:hover': { background: 'rgba(37,99,235,0.03)' } }} onClick={() => openParishModal(p.parish)}>
+                              <TableCell><Box display="flex" alignItems="center" gap={0.5}><Typography sx={{ fontWeight: 700, fontSize: '13px', color: idx < 3 ? '#2563EB' : '#94A3B8' }}>{idx + 1}</Typography>{idx < 3 && <span>{['🥇', '🥈', '🥉'][idx]}</span>}</Box></TableCell>
+                              <TableCell sx={{ fontWeight: idx < 3 ? 700 : 500, color: '#2563EB' }}>{p.parish}</TableCell>
+                              <TableCell><Chip label={dc.label.replace('Division ', 'Div ')} size="small" sx={{ fontWeight: 700, fontSize: '10px', bgcolor: `${dc.color}10`, color: dc.color }} /></TableCell>
+                              <TableCell><Box display="flex" alignItems="center" gap={1}><Box sx={{ flex: 1, height: 14, background: 'rgba(0,0,0,0.04)', borderRadius: 2, overflow: 'hidden' }}><Box sx={{ width: `${pct}%`, height: '100%', borderRadius: 2, background: idx < 3 ? '#2563EB' : '#CBD5E1' }} /></Box><Typography sx={{ fontWeight: 800, fontSize: '14px', color: '#2563EB', minWidth: 32, textAlign: 'right' }}>{p.totalPoints}</Typography></Box></TableCell>
+                              <TableCell align="center" sx={{ color: '#EAB308', fontWeight: 600 }}>{p.firsts || '-'}</TableCell><TableCell align="center" sx={{ color: '#94A3B8', fontWeight: 600 }}>{p.seconds || '-'}</TableCell><TableCell align="center" sx={{ color: '#B45309', fontWeight: 600 }}>{p.thirds || '-'}</TableCell>
+                              <TableCell align="center"><Chip label={p.gradeA} size="small" sx={{ bgcolor: '#ECFDF5', color: '#059669', fontWeight: 700, minWidth: 26 }} /></TableCell>
+                              <TableCell align="center"><Chip label={p.gradeB} size="small" sx={{ bgcolor: '#EFF6FF', color: '#2563EB', fontWeight: 700, minWidth: 26 }} /></TableCell>
+                              <TableCell align="center"><Chip label={p.gradeC} size="small" sx={{ bgcolor: '#FFFBEB', color: '#D97706', fontWeight: 700, minWidth: 26 }} /></TableCell>
+                              <TableCell align="center">{p.eventsCount}</TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody></Table></TableContainer>
+                    </GlassCard>
+                  )}
                 </Box>
               )}
 
               {/* ===== EVENTS ===== */}
               {activeView === 'events' && (
                 <Box>
-                  <FilterBar showSearch />
-                  <ChartCard sx={{ p: 0, overflow: 'hidden' }}>
-                    <Box sx={{ p: 2.5, borderBottom: '1px solid rgba(0,0,0,0.06)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <Typography sx={{ fontWeight: 700, fontSize: '1.15rem', color: '#1a202c' }}>Event Results</Typography>
-                      <Chip label={`${eventResults.length} events`} size="small" sx={{ bgcolor: '#EFF6FF', color: '#2563EB', fontWeight: 600 }} />
+                  {renderFilterBar(true)}
+                  <GlassCard sx={{ overflow: 'hidden' }}>
+                    <Box sx={{ p: 2, borderBottom: '1px solid rgba(0,0,0,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <Typography sx={{ fontWeight: 700, fontSize: '15px', color: '#1a202c' }}>Event Results</Typography>
+                      <Chip label={`${eventResults.length}`} size="small" sx={{ bgcolor: '#EFF6FF', color: '#2563EB', fontWeight: 700, height: 22 }} />
                     </Box>
-                    <TableContainer><Table size="small" sx={tableStyles}><TableHead><TableRow>
-                      <TableCell>Sl</TableCell><TableCell>Event</TableCell><TableCell>Section</TableCell><TableCell>Type</TableCell>
-                      <TableCell align="center">🥇 First</TableCell><TableCell align="center">🥈 Second</TableCell><TableCell align="center">🥉 Third</TableCell>
-                    </TableRow></TableHead><TableBody>
-                      {eventResults.map((ev, idx) => { const w = pos => ev.winners.find(x => x.position === pos);
-                        return (
-                          <TableRow key={idx} sx={{ '&:hover': { background: 'rgba(0,0,0,0.02)' } }}>
-                            <TableCell sx={{ color: '#94A3B8' }}>{idx + 1}</TableCell><TableCell sx={{ fontWeight: 600 }}>{ev.eventName}</TableCell>
-                            <TableCell><Chip label={ev.section} size="small" sx={{ bgcolor: '#EFF6FF', color: '#2563EB', fontSize: '11px', fontWeight: 600 }} /></TableCell>
-                            <TableCell><Chip label={ev.eventType === 'group' ? 'Group' : 'Individual'} size="small" sx={{ bgcolor: ev.eventType === 'group' ? '#FDF2F8' : '#ECFDF5', color: ev.eventType === 'group' ? '#EC4899' : '#059669', fontSize: '11px', fontWeight: 600 }} /></TableCell>
-                            {['1', '2', '3'].map(pos => { const wn = w(pos); return (<TableCell key={pos} align="center">{wn ? (<Box><Typography sx={{ fontWeight: 700, fontSize: '13px', color: '#1a202c' }}>{wn.name}</Typography><ParishName name={wn.parish} sx={{ fontSize: '11px', color: '#94A3B8' }} /></Box>) : <Typography sx={{ color: '#E2E8F0' }}>—</Typography>}</TableCell>); })}
-                          </TableRow>
-                        );
-                      })}
-                      {eventResults.length === 0 && <TableRow><TableCell colSpan={7} align="center" sx={{ py: 5, color: '#CBD5E1' }}>No results found</TableCell></TableRow>}
-                    </TableBody></Table></TableContainer>
-                  </ChartCard>
+                    {isMobile ? (
+                      <Box>
+                        {eventResults.map((ev, idx) => (
+                          <EventCard key={idx} event={ev} winners={ev.winners} onParishClick={openParishModal} />
+                        ))}
+                        {eventResults.length === 0 && <Box sx={{ textAlign: 'center', py: 5, color: '#CBD5E1' }}>No results found</Box>}
+                      </Box>
+                    ) : (
+                      <TableContainer><Table size="small" sx={tableStyles}><TableHead><TableRow>
+                        <TableCell>Sl</TableCell><TableCell>Event</TableCell><TableCell>Section</TableCell><TableCell>Type</TableCell>
+                        <TableCell align="center">🥇 First</TableCell><TableCell align="center">🥈 Second</TableCell><TableCell align="center">🥉 Third</TableCell>
+                      </TableRow></TableHead><TableBody>
+                        {eventResults.map((ev, idx) => { const w = pos => ev.winners.find(x => x.position === pos);
+                          return (
+                            <TableRow key={idx} sx={{ '&:hover': { background: 'rgba(0,0,0,0.02)' } }}>
+                              <TableCell sx={{ color: '#94A3B8' }}>{idx + 1}</TableCell><TableCell sx={{ fontWeight: 600 }}>{ev.eventName}</TableCell>
+                              <TableCell><Chip label={ev.section} size="small" sx={{ bgcolor: '#EFF6FF', color: '#2563EB', fontSize: '11px', fontWeight: 600 }} /></TableCell>
+                              <TableCell><Chip label={ev.eventType === 'group' ? 'Group' : 'Individual'} size="small" sx={{ bgcolor: ev.eventType === 'group' ? '#FDF2F8' : '#ECFDF5', color: ev.eventType === 'group' ? '#EC4899' : '#059669', fontSize: '11px', fontWeight: 600 }} /></TableCell>
+                              {['1', '2', '3'].map(pos => { const wn = w(pos); return (<TableCell key={pos} align="center">{wn ? (<Box><Typography sx={{ fontWeight: 700, fontSize: '13px', color: '#1a202c' }}>{wn.name}</Typography><ParishName name={wn.parish} sx={{ fontSize: '11px', color: '#94A3B8' }} /></Box>) : <Typography sx={{ color: '#E2E8F0' }}>—</Typography>}</TableCell>); })}
+                            </TableRow>
+                          );
+                        })}
+                        {eventResults.length === 0 && <TableRow><TableCell colSpan={7} align="center" sx={{ py: 5, color: '#CBD5E1' }}>No results found</TableCell></TableRow>}
+                      </TableBody></Table></TableContainer>
+                    )}
+                  </GlassCard>
                 </Box>
               )}
 
               {/* ===== SECTIONS ===== */}
               {activeView === 'sections' && (
                 <Box>
-                  <Grid container spacing={3} sx={{ mb: 3 }}>{sectionSummary.map((sec, i) => {
+                  <Grid container spacing={isMobile ? 1.5 : 2.5} sx={{ mb: isMobile ? 2 : 3 }}>{sectionSummary.map((sec, i) => {
                     const pct = sec.totalEventsCount > 0 ? Math.round((sec.scoredEventsCount / sec.totalEventsCount) * 100) : 0; const top = sec.parishStandings.slice(0, 3);
                     return (
                       <Grid item xs={12} md={4} key={sec.section}>
-                        <ChartCard sx={{ height: '100%' }}>
-                          <Box display="flex" justifyContent="space-between" mb={1.5}>
-                            <Box><Typography sx={{ fontWeight: 800, fontSize: '18px', color: COLORS[i] }}>{sec.section}</Typography><Typography sx={{ fontSize: '11px', color: '#94A3B8' }}>{SECTION_CONFIG[sec.section]}</Typography></Box>
-                            <Box sx={{ width: 48, height: 48, borderRadius: '50%', border: `3px solid ${COLORS[i]}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Typography sx={{ fontWeight: 800, fontSize: '14px', color: COLORS[i] }}>{pct}%</Typography></Box>
+                        <GlassCard sx={{ p: isMobile ? 1.5 : 2, height: '100%' }}>
+                          <Box display="flex" justifyContent="space-between" mb={1.2}>
+                            <Box><Typography sx={{ fontWeight: 800, fontSize: isMobile ? '15px' : '17px', color: COLORS[i] }}>{sec.section}</Typography><Typography sx={{ fontSize: '10px', color: '#94A3B8' }}>{SECTION_CONFIG[sec.section]}</Typography></Box>
+                            <Box sx={{ width: 42, height: 42, borderRadius: '50%', border: `3px solid ${COLORS[i]}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Typography sx={{ fontWeight: 800, fontSize: '13px', color: COLORS[i] }}>{pct}%</Typography></Box>
                           </Box>
-                          <Typography sx={{ fontSize: '12px', color: '#64748B', mb: 1.5 }}>{sec.scoredEventsCount}/{sec.totalEventsCount} events · {sec.participants} participants</Typography>
+                          <Typography sx={{ fontSize: '11px', color: '#64748B', mb: 1.2 }}>{sec.scoredEventsCount}/{sec.totalEventsCount} events · {sec.participants} entries</Typography>
                           {top.map((p, pi) => (
-                            <Box key={p.parish} sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.8 }}>
-                              <Typography sx={{ fontSize: '14px', width: 20 }}>{['🥇', '🥈', '🥉'][pi]}</Typography>
-                              <ParishName name={p.parish} sx={{ flex: 1, fontWeight: pi === 0 ? 700 : 500, fontSize: '13px' }} />
-                              <Typography sx={{ fontWeight: 700, fontSize: '13px', color: COLORS[i] }}>{p.totalPoints}</Typography>
+                            <Box key={p.parish} onClick={() => openParishModal(p.parish, sec.section)} sx={{ display: 'flex', alignItems: 'center', gap: 0.8, mb: 0.6, cursor: 'pointer', '&:active': { opacity: 0.7 } }}>
+                              <Typography sx={{ fontSize: '14px', width: 18 }}>{['🥇', '🥈', '🥉'][pi]}</Typography>
+                              <Typography sx={{ flex: 1, fontWeight: pi === 0 ? 700 : 500, fontSize: '12px', color: '#1a202c', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.parish}</Typography>
+                              <Typography sx={{ fontWeight: 700, fontSize: '12px', color: COLORS[i] }}>{p.totalPoints}</Typography>
                             </Box>
                           ))}
-                        </ChartCard>
+                        </GlassCard>
                       </Grid>
                     );
                   })}</Grid>
                   {sectionSummary.map((sec, si) => (
-                    <ChartCard key={sec.section} sx={{ p: 0, overflow: 'hidden', mb: 3 }}>
-                      <Box sx={{ p: 2.5, borderBottom: '1px solid rgba(0,0,0,0.06)' }}><Typography sx={{ fontWeight: 700, color: COLORS[si], fontSize: '15px' }}>{sec.section} — Full Rankings</Typography></Box>
-                      <TableContainer><Table size="small" sx={tableStyles}><TableHead><TableRow><TableCell width={60}>Rank</TableCell><TableCell>Parish</TableCell><TableCell sx={{ width: '40%' }}>Points</TableCell></TableRow></TableHead><TableBody>
-                        {sec.parishStandings.map((p, idx) => { const sMax = sec.parishStandings[0]?.totalPoints || 1;
-                          return (
-                            <TableRow key={p.parish} sx={{ cursor: 'pointer', '&:hover': { background: 'rgba(0,0,0,0.02)' } }} onClick={() => openParishModal(p.parish)}>
-                              <TableCell><Typography sx={{ fontWeight: 700, fontSize: '13px' }}>{idx + 1} {idx < 3 && ['🥇', '🥈', '🥉'][idx]}</Typography></TableCell>
-                              <TableCell sx={{ fontWeight: idx < 3 ? 700 : 400, color: '#2563EB' }}>{p.parish}</TableCell>
-                              <TableCell><Box display="flex" alignItems="center" gap={1}><Box sx={{ flex: 1, height: 14, background: 'rgba(0,0,0,0.04)', borderRadius: '3px', overflow: 'hidden' }}><Box sx={{ width: `${(p.totalPoints / sMax) * 100}%`, height: '100%', borderRadius: '3px', background: COLORS[si] }} /></Box><Typography sx={{ fontWeight: 700, fontSize: '13px', color: COLORS[si], minWidth: 30, textAlign: 'right' }}>{p.totalPoints}</Typography></Box></TableCell>
-                            </TableRow>
-                          );
-                        })}
-                      </TableBody></Table></TableContainer>
-                    </ChartCard>
+                    <GlassCard key={sec.section} sx={{ overflow: 'hidden', mb: isMobile ? 2 : 3 }}>
+                      <Box sx={{ p: 2, borderBottom: '1px solid rgba(0,0,0,0.05)' }}><Typography sx={{ fontWeight: 700, color: COLORS[si], fontSize: '14px' }}>{sec.section} — Full Rankings</Typography></Box>
+                      {isMobile ? (
+                        <Box>
+                          {sec.parishStandings.map((p, idx) => {
+                            const sMax = sec.parishStandings[0]?.totalPoints || 1; const pct = (p.totalPoints / sMax) * 100;
+                            return (
+                              <Box key={p.parish} onClick={() => openParishModal(p.parish, sec.section)} sx={{ display: 'flex', alignItems: 'center', gap: 1, px: 1.5, py: 0.8, cursor: 'pointer', borderBottom: '1px solid rgba(0,0,0,0.03)', '&:active': { opacity: 0.7 } }}>
+                                <Typography sx={{ fontWeight: 700, fontSize: '12px', width: 24, textAlign: 'right', color: idx < 3 ? COLORS[si] : '#94A3B8' }}>{idx + 1}</Typography>
+                                {idx < 3 && <Typography sx={{ fontSize: '13px', width: 16 }}>{['🥇', '🥈', '🥉'][idx]}</Typography>}
+                                <Typography sx={{ flex: 1, fontWeight: idx < 3 ? 700 : 400, fontSize: '12px', color: '#1a202c', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.parish}</Typography>
+                                <Typography sx={{ fontWeight: 700, fontSize: '13px', color: COLORS[si] }}>{p.totalPoints}</Typography>
+                              </Box>
+                            );
+                          })}
+                        </Box>
+                      ) : (
+                        <TableContainer><Table size="small" sx={tableStyles}><TableHead><TableRow><TableCell width={60}>Rank</TableCell><TableCell>Parish</TableCell><TableCell sx={{ width: '40%' }}>Points</TableCell></TableRow></TableHead><TableBody>
+                          {sec.parishStandings.map((p, idx) => { const sMax = sec.parishStandings[0]?.totalPoints || 1;
+                            return (
+                              <TableRow key={p.parish} sx={{ cursor: 'pointer', '&:hover': { background: 'rgba(0,0,0,0.02)' } }} onClick={() => openParishModal(p.parish, sec.section)}>
+                                <TableCell><Typography sx={{ fontWeight: 700, fontSize: '13px' }}>{idx + 1} {idx < 3 && ['🥇', '🥈', '🥉'][idx]}</Typography></TableCell>
+                                <TableCell sx={{ fontWeight: idx < 3 ? 700 : 400, color: '#2563EB' }}>{p.parish}</TableCell>
+                                <TableCell><Box display="flex" alignItems="center" gap={1}><Box sx={{ flex: 1, height: 14, background: 'rgba(0,0,0,0.04)', borderRadius: 2, overflow: 'hidden' }}><Box sx={{ width: `${(p.totalPoints / sMax) * 100}%`, height: '100%', borderRadius: 2, background: COLORS[si] }} /></Box><Typography sx={{ fontWeight: 700, fontSize: '13px', color: COLORS[si], minWidth: 30, textAlign: 'right' }}>{p.totalPoints}</Typography></Box></TableCell>
+                              </TableRow>
+                            );
+                          })}
+                        </TableBody></Table></TableContainer>
+                      )}
+                    </GlassCard>
                   ))}
                 </Box>
               )}
@@ -929,26 +1042,26 @@ const ResultsDashboardPro = () => {
               {/* ===== STAGES ===== */}
               {activeView === 'stages' && (
                 <Box>
-                  <FilterBar showStage showSearch />
-                  <Grid container spacing={3} sx={{ mb: 3 }}>
+                  {renderFilterBar(true, true, true)}
+                  <Grid container spacing={isMobile ? 1.5 : 2.5} sx={{ mb: isMobile ? 2 : 3 }}>
                     {availableStages.map((stage) => {
                       const stageEvents = stageGroupedEvents[stage] || [];
                       const scoredCount = stageEvents.filter(e => stageWinnersMap[`${stage}|${e.eventName}`]?.length > 0).length;
                       const pct = stageEvents.length > 0 ? Math.round((scoredCount / stageEvents.length) * 100) : 0;
                       const stageColor = stage === 'On Stage' ? '#2563EB' : '#10B981';
                       return (
-                        <Grid item xs={12} sm={6} key={stage}>
+                        <Grid item xs={6} key={stage}>
                           <StyledCard sx={{ cursor: 'pointer', border: selectedStage === stage ? `2px solid ${stageColor}` : undefined }}
                             onClick={() => setSelectedStage(selectedStage === stage ? '' : stage)}>
-                            <StyledCardContent>
-                              <StatWrapper>
-                                <Box display="flex" alignItems="center" gap={1.5}>
-                                  <IconBox color={stageColor}><Music size={22} /></IconBox>
-                                  <Box><Typography sx={{ fontWeight: 700, fontSize: '16px', color: '#1a202c' }}>{stage}</Typography><Typography sx={{ fontSize: '12px', color: '#94A3B8' }}>{stageEvents.length} events · {scoredCount} scored</Typography></Box>
+                            <Box sx={{ p: isMobile ? 1.5 : 2 }}>
+                              <Box display="flex" justifyContent="space-between" alignItems="flex-start">
+                                <Box display="flex" alignItems="center" gap={1}>
+                                  <IconBox color={stageColor} sx={{ width: isMobile ? 36 : 44, height: isMobile ? 36 : 44 }}><Music size={isMobile ? 18 : 22} /></IconBox>
+                                  <Box><Typography sx={{ fontWeight: 700, fontSize: isMobile ? '13px' : '15px', color: '#1a202c' }}>{stage}</Typography><Typography sx={{ fontSize: '10px', color: '#94A3B8' }}>{stageEvents.length} events</Typography></Box>
                                 </Box>
-                                <Box sx={{ width: 52, height: 52, borderRadius: '50%', border: `3px solid ${stageColor}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Typography sx={{ fontWeight: 800, fontSize: '15px', color: stageColor }}>{pct}%</Typography></Box>
-                              </StatWrapper>
-                            </StyledCardContent>
+                                <Box sx={{ width: isMobile ? 40 : 48, height: isMobile ? 40 : 48, borderRadius: '50%', border: `3px solid ${stageColor}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Typography sx={{ fontWeight: 800, fontSize: isMobile ? '12px' : '14px', color: stageColor }}>{pct}%</Typography></Box>
+                              </Box>
+                            </Box>
                           </StyledCard>
                         </Grid>
                       );
@@ -960,18 +1073,41 @@ const ResultsDashboardPro = () => {
                     const scoredCount = filtered.filter(e => stageWinnersMap[`${stage}|${e.eventName}`]?.length > 0).length;
                     const stageColor = stage === 'On Stage' ? '#2563EB' : '#10B981';
                     return (
-                      <ChartCard key={stage} sx={{ p: 0, overflow: 'hidden', mb: 3 }}>
-                        <Box sx={{ p: 2.5, borderBottom: '1px solid rgba(0,0,0,0.06)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <Box display="flex" alignItems="center" gap={1.5}><IconBox color={stageColor} sx={{ width: 36, height: 36, borderRadius: 10 }}><Music size={18} /></IconBox><Box><Typography sx={{ fontWeight: 700, fontSize: '1.1rem', color: '#1a202c' }}>{stage}</Typography><Typography sx={{ fontSize: '11px', color: '#94A3B8' }}>{filtered.length} events · {scoredCount} scored</Typography></Box></Box>
-                          <Box sx={{ display: 'flex', gap: 1 }}><Chip label={`${filtered.length} events`} size="small" sx={{ bgcolor: '#EFF6FF', color: '#2563EB', fontWeight: 600 }} /><Chip label={`${scoredCount} scored`} size="small" sx={{ bgcolor: '#ECFDF5', color: '#059669', fontWeight: 600 }} /></Box>
+                      <GlassCard key={stage} sx={{ overflow: 'hidden', mb: isMobile ? 2 : 3 }}>
+                        <Box sx={{ p: 2, borderBottom: '1px solid rgba(0,0,0,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <Box display="flex" alignItems="center" gap={1}><IconBox color={stageColor} sx={{ width: 32, height: 32, borderRadius: 8 }}><Music size={16} /></IconBox><Box><Typography sx={{ fontWeight: 700, fontSize: '14px', color: '#1a202c' }}>{stage}</Typography><Typography sx={{ fontSize: '10px', color: '#94A3B8' }}>{filtered.length} events · {scoredCount} scored</Typography></Box></Box>
                         </Box>
-                        <TableContainer><Table size="small" sx={tableStyles}><TableHead><TableRow>
-                          <TableCell>Sl</TableCell><TableCell>Event</TableCell><TableCell>Section</TableCell><TableCell>Type</TableCell><TableCell>Gender</TableCell>
-                          <TableCell align="center">🥇 First</TableCell><TableCell align="center">🥈 Second</TableCell><TableCell align="center">🥉 Third</TableCell>
-                        </TableRow></TableHead><TableBody>
-                          {filtered.map((event, idx) => <EventTableRow key={event._id} event={event} idx={idx} winnersData={stageWinnersMap[`${stage}|${event.eventName}`]} />)}
-                        </TableBody></Table></TableContainer>
-                      </ChartCard>
+                        {isMobile ? (
+                          <Box>
+                            {filtered.map((event, idx) => (
+                              <EventCard key={event._id} event={event} winners={stageWinnersMap[`${stage}|${event.eventName}`]} onParishClick={openParishModal} />
+                            ))}
+                          </Box>
+                        ) : (
+                          <TableContainer><Table size="small" sx={tableStyles}><TableHead><TableRow>
+                            <TableCell>Sl</TableCell><TableCell>Event</TableCell><TableCell>Section</TableCell><TableCell>Type</TableCell><TableCell>Gender</TableCell>
+                            <TableCell align="center">🥇 First</TableCell><TableCell align="center">🥈 Second</TableCell><TableCell align="center">🥉 Third</TableCell>
+                          </TableRow></TableHead><TableBody>
+                            {filtered.map((event, idx) => {
+                              const winners = (stageWinnersMap[`${stage}|${event.eventName}`] || []).sort((a, b) => +a.position - +b.position);
+                              const w = pos => winners.find(x => x.position === pos);
+                              const isScored = winners.length > 0;
+                              return (
+                                <TableRow key={event._id} sx={{ bgcolor: isScored ? 'rgba(16,185,129,0.02)' : 'transparent', '&:hover': { background: 'rgba(0,0,0,0.02)' } }}>
+                                  <TableCell sx={{ color: '#94A3B8' }}>{idx + 1}</TableCell>
+                                  <TableCell><Box display="flex" alignItems="center" gap={0.5}><Typography sx={{ fontWeight: 600 }}>{event.eventName}</Typography>{isScored && <Chip label="✓" size="small" sx={{ bgcolor: '#ECFDF5', color: '#059669', fontWeight: 700, height: 18, minWidth: 18, '& .MuiChip-label': { px: 0.5 } }} />}</Box></TableCell>
+                                  <TableCell><Chip label={event.section} size="small" sx={{ bgcolor: '#EFF6FF', color: '#2563EB', fontSize: '11px', fontWeight: 600 }} /></TableCell>
+                                  <TableCell><Chip label={event.eventType === 'group' ? 'Group' : 'Individual'} size="small" sx={{ bgcolor: event.eventType === 'group' ? '#FDF2F8' : '#ECFDF5', color: event.eventType === 'group' ? '#EC4899' : '#059669', fontSize: '11px', fontWeight: 600 }} /></TableCell>
+                                  <TableCell><Chip label={event.gender === 'male' ? 'Boys' : event.gender === 'female' ? 'Girls' : 'All'} size="small" sx={{ fontSize: '11px', fontWeight: 600 }} /></TableCell>
+                                  {['1', '2', '3'].map(pos => { const wn = w(pos); return (
+                                    <TableCell key={pos} align="center">{wn ? (<Box><Typography sx={{ fontWeight: 700, fontSize: '13px', color: '#1a202c' }}>{wn.name}</Typography><ParishName name={wn.parish} sx={{ fontSize: '11px', color: '#94A3B8' }} /></Box>) : <Typography sx={{ color: '#E2E8F0' }}>—</Typography>}</TableCell>
+                                  ); })}
+                                </TableRow>
+                              );
+                            })}
+                          </TableBody></Table></TableContainer>
+                        )}
+                      </GlassCard>
                     );
                   })}
                 </Box>
@@ -980,15 +1116,15 @@ const ResultsDashboardPro = () => {
               {/* ===== VENUES ===== */}
               {activeView === 'venues' && (
                 <Box>
-                  <FilterBar showVenue showSearch />
+                  {renderFilterBar(true, true, false, true)}
                   {!stageAllocation?.venues?.length ? (
-                    <ChartCard sx={{ textAlign: 'center', py: 6 }}>
-                      <MapPin size={48} style={{ color: '#94a3b8', marginBottom: 16 }} />
-                      <Typography sx={{ fontWeight: 700, fontSize: '17px', color: '#64748B', mb: 0.5 }}>No Venue Allocations</Typography>
-                      <Typography sx={{ fontSize: '13px', color: '#94A3B8' }}>Stage allocations have not been set up yet.</Typography>
-                    </ChartCard>
+                    <GlassCard sx={{ textAlign: 'center', py: 6, px: 3 }}>
+                      <MapPin size={40} style={{ color: '#94a3b8', marginBottom: 12 }} />
+                      <Typography sx={{ fontWeight: 700, fontSize: '15px', color: '#64748B', mb: 0.5 }}>No Venue Allocations</Typography>
+                      <Typography sx={{ fontSize: '12px', color: '#94A3B8' }}>Stage allocations have not been set up yet.</Typography>
+                    </GlassCard>
                   ) : (<>
-                    <Grid container spacing={3} sx={{ mb: 3 }}>
+                    <Grid container spacing={isMobile ? 1 : 2.5} sx={{ mb: isMobile ? 2 : 3 }}>
                       {(selectedVenue ? venueData : (stageAllocation?.venues || []).filter(v => v.venueId).map((v) => {
                         const venue = v.venueId;
                         const venueEvents = (v.eventIds || []).filter(Boolean);
@@ -1000,18 +1136,19 @@ const ResultsDashboardPro = () => {
                         const pct = v.totalEvents > 0 ? Math.round((v.scoredCount / v.totalEvents) * 100) : 0;
                         const venueColor = COLORS[i % COLORS.length];
                         return (
-                          <Grid item xs={12} sm={6} md={4} key={v.venueId}>
+                          <Grid item xs={6} sm={4} key={v.venueId}>
                             <StyledCard sx={{ cursor: 'pointer', border: selectedVenue === v.venueId ? `2px solid ${venueColor}` : undefined }}
                               onClick={() => setSelectedVenue(selectedVenue === v.venueId ? '' : v.venueId)}>
-                              <StyledCardContent>
-                                <StatWrapper>
-                                  <Box display="flex" alignItems="center" gap={1.5}>
-                                    <IconBox color={venueColor}><MapPin size={22} /></IconBox>
-                                    <Box><Typography sx={{ fontWeight: 700, fontSize: '16px', color: '#1a202c' }}>{v.venueName}</Typography><Typography sx={{ fontSize: '11px', color: '#94A3B8' }}>{v.totalEvents} events · {v.scoredCount} scored</Typography></Box>
-                                  </Box>
-                                  <Box sx={{ width: 48, height: 48, borderRadius: '50%', border: `3px solid ${venueColor}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Typography sx={{ fontWeight: 800, fontSize: '14px', color: venueColor }}>{pct}%</Typography></Box>
-                                </StatWrapper>
-                              </StyledCardContent>
+                              <Box sx={{ p: isMobile ? 1.5 : 2 }}>
+                                <Box display="flex" alignItems="center" gap={1} mb={0.5}>
+                                  <IconBox color={venueColor} sx={{ width: isMobile ? 32 : 40, height: isMobile ? 32 : 40 }}><MapPin size={isMobile ? 16 : 20} /></IconBox>
+                                  <Typography sx={{ fontWeight: 700, fontSize: isMobile ? '12px' : '14px', color: '#1a202c', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v.venueName}</Typography>
+                                </Box>
+                                <Box display="flex" justifyContent="space-between" alignItems="center">
+                                  <Typography sx={{ fontSize: '10px', color: '#94A3B8' }}>{v.totalEvents} events · {v.scoredCount} done</Typography>
+                                  <Typography sx={{ fontWeight: 800, fontSize: '13px', color: venueColor }}>{pct}%</Typography>
+                                </Box>
+                              </Box>
                             </StyledCard>
                           </Grid>
                         );
@@ -1023,18 +1160,36 @@ const ResultsDashboardPro = () => {
                       const venueColor = COLORS[vi % COLORS.length];
                       const scoredInView = v.events.filter(e => v.winnersLookup[e.eventName]?.length > 0).length;
                       return (
-                        <ChartCard key={v.venueId} sx={{ p: 0, overflow: 'hidden', mb: 3 }}>
-                          <Box sx={{ p: 2.5, borderBottom: '1px solid rgba(0,0,0,0.06)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <Box display="flex" alignItems="center" gap={1.5}><IconBox color={venueColor} sx={{ width: 36, height: 36, borderRadius: 10 }}><MapPin size={18} /></IconBox><Box><Typography sx={{ fontWeight: 700, fontSize: '1.1rem', color: '#1a202c' }}>{v.venueName}</Typography><Typography sx={{ fontSize: '11px', color: '#94A3B8' }}>{v.events.length} events · {scoredInView} scored{v.capacity > 0 && ` · Capacity: ${v.capacity}`}</Typography></Box></Box>
-                            <Box sx={{ display: 'flex', gap: 1 }}><Chip label={`${v.events.length} events`} size="small" sx={{ bgcolor: '#EFF6FF', color: '#2563EB', fontWeight: 600 }} /><Chip label={`${scoredInView} scored`} size="small" sx={{ bgcolor: '#ECFDF5', color: '#059669', fontWeight: 600 }} /></Box>
+                        <GlassCard key={v.venueId} sx={{ overflow: 'hidden', mb: isMobile ? 2 : 3 }}>
+                          <Box sx={{ p: 2, borderBottom: '1px solid rgba(0,0,0,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <Box display="flex" alignItems="center" gap={1}><IconBox color={venueColor} sx={{ width: 32, height: 32, borderRadius: 8 }}><MapPin size={16} /></IconBox><Box><Typography sx={{ fontWeight: 700, fontSize: '14px', color: '#1a202c' }}>{v.venueName}</Typography><Typography sx={{ fontSize: '10px', color: '#94A3B8' }}>{v.events.length} events · {scoredInView} scored</Typography></Box></Box>
                           </Box>
-                          <TableContainer><Table size="small" sx={tableStyles}><TableHead><TableRow>
-                            <TableCell>Sl</TableCell><TableCell>Event</TableCell><TableCell>Section</TableCell><TableCell>Type</TableCell><TableCell>Gender</TableCell>
-                            <TableCell align="center">🥇 First</TableCell><TableCell align="center">🥈 Second</TableCell><TableCell align="center">🥉 Third</TableCell>
-                          </TableRow></TableHead><TableBody>
-                            {v.events.map((event, idx) => <EventTableRow key={event._id} event={event} idx={idx} winnersData={v.winnersLookup[event.eventName]} />)}
-                          </TableBody></Table></TableContainer>
-                        </ChartCard>
+                          {isMobile ? (
+                            <Box>{v.events.map((event, idx) => <EventCard key={event._id} event={event} winners={v.winnersLookup[event.eventName]} onParishClick={openParishModal} />)}</Box>
+                          ) : (
+                            <TableContainer><Table size="small" sx={tableStyles}><TableHead><TableRow>
+                              <TableCell>Sl</TableCell><TableCell>Event</TableCell><TableCell>Section</TableCell><TableCell>Type</TableCell><TableCell>Gender</TableCell>
+                              <TableCell align="center">🥇 First</TableCell><TableCell align="center">🥈 Second</TableCell><TableCell align="center">🥉 Third</TableCell>
+                            </TableRow></TableHead><TableBody>
+                              {v.events.map((event, idx) => {
+                                const winners = (v.winnersLookup[event.eventName] || []).sort((a, b) => +a.position - +b.position);
+                                const w = pos => winners.find(x => x.position === pos); const isScored = winners.length > 0;
+                                return (
+                                  <TableRow key={event._id} sx={{ bgcolor: isScored ? 'rgba(16,185,129,0.02)' : 'transparent', '&:hover': { background: 'rgba(0,0,0,0.02)' } }}>
+                                    <TableCell sx={{ color: '#94A3B8' }}>{idx + 1}</TableCell>
+                                    <TableCell><Box display="flex" alignItems="center" gap={0.5}><Typography sx={{ fontWeight: 600 }}>{event.eventName}</Typography>{isScored && <Chip label="✓" size="small" sx={{ bgcolor: '#ECFDF5', color: '#059669', fontWeight: 700, height: 18, '& .MuiChip-label': { px: 0.5 } }} />}</Box></TableCell>
+                                    <TableCell><Chip label={event.section} size="small" sx={{ bgcolor: '#EFF6FF', color: '#2563EB', fontSize: '11px', fontWeight: 600 }} /></TableCell>
+                                    <TableCell><Chip label={event.eventType === 'group' ? 'Group' : 'Individual'} size="small" sx={{ fontSize: '11px', fontWeight: 600 }} /></TableCell>
+                                    <TableCell><Chip label={event.gender === 'male' ? 'Boys' : event.gender === 'female' ? 'Girls' : 'All'} size="small" sx={{ fontSize: '11px', fontWeight: 600 }} /></TableCell>
+                                    {['1', '2', '3'].map(pos => { const wn = w(pos); return (
+                                      <TableCell key={pos} align="center">{wn ? (<Box><Typography sx={{ fontWeight: 700, fontSize: '13px', color: '#1a202c' }}>{wn.name}</Typography><ParishName name={wn.parish} sx={{ fontSize: '11px', color: '#94A3B8' }} /></Box>) : <Typography sx={{ color: '#E2E8F0' }}>—</Typography>}</TableCell>
+                                    ); })}
+                                  </TableRow>
+                                );
+                              })}
+                            </TableBody></Table></TableContainer>
+                          )}
+                        </GlassCard>
                       );
                     })}
                   </>)}
@@ -1044,89 +1199,109 @@ const ResultsDashboardPro = () => {
               {/* ===== PARISHES ===== */}
               {activeView === 'parishes' && (
                 <Box>
-                  <FilterBar showSearch showDivision />
+                  {renderFilterBar(true, true)}
                   {parishPrizeListData.map((p, pi) => {
                     const dc = getDivConfig(p.division);
-                    const totalMedalsP = p.firsts + p.seconds + p.thirds;
                     return (
-                      <ChartCard key={p.parish} sx={{ p: 0, overflow: 'hidden', mb: 3 }}>
-                        {/* Parish Header */}
-                        <Box sx={{ p: 2.5, borderBottom: '1px solid rgba(0,0,0,0.06)', background: `linear-gradient(135deg, ${dc.color}08, ${dc.color}03)` }}>
+                      <GlassCard key={p.parish} sx={{ overflow: 'hidden', mb: isMobile ? 1.5 : 3 }}>
+                        <Box sx={{ p: isMobile ? 1.5 : 2.5, borderBottom: '1px solid rgba(0,0,0,0.05)', background: `linear-gradient(135deg, ${dc.color}06, transparent)` }}>
                           <Box display="flex" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap={1}>
-                            <Box display="flex" alignItems="center" gap={1.5}>
-                              <Box sx={{ width: 36, height: 36, borderRadius: '50%', background: `${dc.color}15`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                <Typography sx={{ fontWeight: 900, fontSize: '14px', color: dc.color }}>{pi + 1}</Typography>
+                            <Box display="flex" alignItems="center" gap={1}>
+                              <Box sx={{ width: 32, height: 32, borderRadius: '50%', background: `${dc.color}12`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <Typography sx={{ fontWeight: 900, fontSize: '12px', color: dc.color }}>{pi + 1}</Typography>
                               </Box>
                               <Box>
-                                <Typography sx={{ fontWeight: 800, fontSize: '17px', color: '#1a202c' }}>{p.parish}</Typography>
-                                <Box display="flex" gap={1} alignItems="center">
-                                  <Chip label={dc.label} size="small" sx={{ fontWeight: 700, fontSize: '10px', bgcolor: `${dc.color}12`, color: dc.color, height: 20 }} />
-                                  {p.families > 0 && <Typography sx={{ fontSize: '11px', color: '#94A3B8' }}>{p.families} families</Typography>}
+                                <Typography sx={{ fontWeight: 800, fontSize: isMobile ? '14px' : '16px', color: '#1a202c' }}>{p.parish}</Typography>
+                                <Box display="flex" gap={0.8} alignItems="center">
+                                  <Chip label={dc.label} size="small" sx={{ fontWeight: 700, fontSize: '9px', bgcolor: `${dc.color}10`, color: dc.color, height: 18 }} />
+                                  {p.families > 0 && <Typography sx={{ fontSize: '10px', color: '#94A3B8' }}>{p.families} families</Typography>}
                                 </Box>
                               </Box>
                             </Box>
-                            <Box display="flex" gap={2.5} alignItems="center" flexWrap="wrap">
+                            <Box display="flex" gap={isMobile ? 1.5 : 2.5} alignItems="center">
                               <Box sx={{ textAlign: 'center' }}>
-                                <Typography sx={{ fontWeight: 900, fontSize: '22px', color: dc.color }}>{p.totalPoints}</Typography>
-                                <Typography sx={{ fontSize: '10px', color: '#94A3B8', fontWeight: 600 }}>POINTS</Typography>
+                                <Typography sx={{ fontWeight: 900, fontSize: isMobile ? '18px' : '22px', color: dc.color }}>{p.totalPoints}</Typography>
+                                <Typography sx={{ fontSize: '9px', color: '#94A3B8', fontWeight: 600 }}>PTS</Typography>
                               </Box>
-                              <Box display="flex" gap={1} alignItems="center">
-                                {p.firsts > 0 && <Typography sx={{ fontSize: '14px' }}>🥇{p.firsts}</Typography>}
-                                {p.seconds > 0 && <Typography sx={{ fontSize: '14px' }}>🥈{p.seconds}</Typography>}
-                                {p.thirds > 0 && <Typography sx={{ fontSize: '14px' }}>🥉{p.thirds}</Typography>}
+                              <Box display="flex" gap={0.5}>
+                                {p.firsts > 0 && <Typography sx={{ fontSize: '12px' }}>🥇{p.firsts}</Typography>}
+                                {p.seconds > 0 && <Typography sx={{ fontSize: '12px' }}>🥈{p.seconds}</Typography>}
+                                {p.thirds > 0 && <Typography sx={{ fontSize: '12px' }}>🥉{p.thirds}</Typography>}
                               </Box>
                             </Box>
                           </Box>
                         </Box>
 
-                        {/* Prize Winners — Card Layout */}
                         {p.prizes.length > 0 && (
                           <Box>
-                            <Box sx={{ px: 2.5, pt: 2, pb: 0.5 }}>
-                              <Typography sx={{ fontWeight: 700, fontSize: '13px', color: '#64748B', display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                                <Trophy size={14} color="#D97706" /> Prize Winners ({p.prizes.length})
+                            <Box sx={{ px: isMobile ? 1.5 : 2.5, pt: 1.5, pb: 0.5 }}>
+                              <Typography sx={{ fontWeight: 700, fontSize: '12px', color: '#64748B', display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                <Trophy size={13} color="#D97706" /> Prize Winners ({p.prizes.length})
                               </Typography>
                             </Box>
-                            <Box sx={{ mx: 2.5, mb: 2, borderRadius: 2, border: '1px solid rgba(0,0,0,0.06)', overflow: 'hidden' }}>
-                              {p.prizes.map((r, idx) => (
-                                <PrizeRow key={idx} r={r} idx={idx} />
-                              ))}
+                            <Box sx={{ mx: isMobile ? 1 : 2.5, mb: 1.5, borderRadius: 2, border: '1px solid rgba(0,0,0,0.05)', overflow: 'hidden' }}>
+                              {p.prizes.map((r, idx) => <PrizeCard key={idx} r={r} />)}
                             </Box>
                           </Box>
                         )}
 
-                        {/* Other Graded Entries — Card Layout */}
                         {p.graded.length > 0 && (
                           <Box>
-                            <Box sx={{ px: 2.5, pt: p.prizes.length > 0 ? 0 : 2, pb: 0.5, borderTop: p.prizes.length > 0 ? '1px solid rgba(0,0,0,0.04)' : 'none' }}>
-                              <Typography sx={{ fontWeight: 700, fontSize: '13px', color: '#64748B', display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                                <Award size={14} color="#6366F1" /> Other Entries ({p.graded.length})
+                            <Box sx={{ px: isMobile ? 1.5 : 2.5, pt: p.prizes.length > 0 ? 0 : 1.5, pb: 0.5, borderTop: p.prizes.length > 0 ? '1px solid rgba(0,0,0,0.03)' : 'none' }}>
+                              <Typography sx={{ fontWeight: 700, fontSize: '12px', color: '#64748B', display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                <Award size={13} color="#6366F1" /> Other Entries ({p.graded.length})
                               </Typography>
                             </Box>
-                            <Box sx={{ mx: 2.5, mb: 2, borderRadius: 2, border: '1px solid rgba(0,0,0,0.06)', overflow: 'hidden' }}>
-                              {p.graded.map((r, idx) => (
-                                <GradedRow key={idx} r={r} idx={idx} />
-                              ))}
+                            <Box sx={{ mx: isMobile ? 1 : 2.5, mb: 1.5, borderRadius: 2, border: '1px solid rgba(0,0,0,0.05)', overflow: 'hidden' }}>
+                              {p.graded.map((r, idx) => <GradedRow key={idx} r={r} idx={idx} />)}
                             </Box>
                           </Box>
                         )}
-                      </ChartCard>
+                      </GlassCard>
                     );
                   })}
                   {parishPrizeListData.length === 0 && (
-                    <ChartCard sx={{ textAlign: 'center', py: 6 }}>
-                      <Typography sx={{ color: '#94A3B8', fontSize: '15px' }}>No results found.</Typography>
-                    </ChartCard>
+                    <GlassCard sx={{ textAlign: 'center', py: 6 }}>
+                      <Typography sx={{ color: '#94A3B8', fontSize: '14px' }}>No results found.</Typography>
+                    </GlassCard>
                   )}
                 </Box>
               )}
-
             </Box>
           )}
         </Container>
+
+        {/* ====== MOBILE BOTTOM NAV ====== */}
+        {isMobile && (
+          <Box className="no-print bottom-nav" sx={{
+            position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 1200,
+            background: 'rgba(255,255,255,0.92)', backdropFilter: 'blur(16px)',
+            borderTop: '1px solid rgba(0,0,0,0.08)',
+            display: 'flex', justifyContent: 'space-around',
+            paddingBottom: 'env(safe-area-inset-bottom)',
+            boxShadow: '0 -2px 12px rgba(0,0,0,0.06)',
+          }}>
+            {views.map(v => (
+              <Box
+                key={v.key}
+                onClick={() => setActiveView(v.key)}
+                sx={{
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                  py: 0.8, px: 0.5, cursor: 'pointer', flex: 1, minWidth: 0,
+                  color: activeView === v.key ? '#2563EB' : '#94A3B8',
+                  transition: 'color 0.15s',
+                  '&:active': { transform: 'scale(0.92)' },
+                }}
+              >
+                <Typography sx={{ fontSize: '16px', lineHeight: 1 }}>{v.icon}</Typography>
+                <Typography sx={{ fontSize: '9px', fontWeight: activeView === v.key ? 700 : 500, mt: 0.2, lineHeight: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>{v.label}</Typography>
+                {activeView === v.key && <Box sx={{ width: 4, height: 4, borderRadius: '50%', bgcolor: '#2563EB', mt: 0.3 }} />}
+              </Box>
+            ))}
+          </Box>
+        )}
       </DashboardContainer>
 
-      {/* Parish Detail Modal */}
       <ParishDetailModal />
     </ThemeProvider>
   );
