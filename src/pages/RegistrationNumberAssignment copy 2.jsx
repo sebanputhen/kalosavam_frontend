@@ -155,7 +155,8 @@ const RegistrationNumberAssignment = () => {
         const { parishName, parishId, registrations } = result.value;
 
         for (const reg of registrations) {
-    if (reg.event?.section !== selectedSection) continue;
+          if (CLASS_TO_SECTION[reg.standard] !== selectedSection) continue;
+
           const eventType = reg.event?.eventType;
           if (eventType === 'single') {
             const dobStr = reg.dob ? new Date(reg.dob).toISOString().slice(0, 10) : '';
