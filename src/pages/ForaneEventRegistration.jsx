@@ -293,8 +293,8 @@ const ForaneEventRegistration = () => {
                               <TableCell sx={{ fontWeight: 600 }}>No.</TableCell>
                               <TableCell sx={{ fontWeight: 600 }}>Event Name</TableCell>
                               <TableCell sx={{ fontWeight: 600 }}>Section</TableCell>
-                              <TableCell sx={{ fontWeight: 600 }}>Type</TableCell>
-                              <TableCell sx={{ fontWeight: 600 }}>Gender</TableCell>
+                              {/* <TableCell sx={{ fontWeight: 600 }}>Type</TableCell>
+                              <TableCell sx={{ fontWeight: 600 }}>Gender</TableCell> */}
                               <TableCell sx={{ fontWeight: 600 }}>Registration Numbers</TableCell>
                             </TableRow>
                           </TableHead>
@@ -307,14 +307,14 @@ const ForaneEventRegistration = () => {
                               return (
                                 <TableRow key={event._id} sx={{ '&:hover': { bgcolor: 'rgba(0,0,0,0.02)' } }}>
                                   <TableCell>{idx + 1}</TableCell>
-                                  <TableCell sx={{ fontWeight: 500 }}>{event.eventName}</TableCell>
+                                  <TableCell sx={{ fontWeight: 500,height: 50, fontSize: '1.0rem', }}>{event.eventName}</TableCell>
                                   <TableCell>
                                     <Chip size="small" label={event.section || 'N/A'} sx={{
                                       bgcolor: `${sColor}15`, color: sColor,
-                                      border: `1px solid ${sColor}30`, fontWeight: 600, fontSize: '0.7rem'
+                                      border: `1px solid ${sColor}30`, fontWeight: 600,  height: 50, fontSize: '1.0rem',
                                     }} />
                                   </TableCell>
-                                  <TableCell>
+                                  {/* <TableCell>
                                     <Chip size="small" label={event.eventType === 'single' ? 'Individual' : 'Group'}
                                       variant="outlined" sx={{ fontSize: '0.7rem' }} />
                                   </TableCell>
@@ -323,17 +323,17 @@ const ForaneEventRegistration = () => {
                                       label={event.gender === 'male' ? 'Boys' : event.gender === 'female' ? 'Girls' : 'Mixed'}
                                       variant="outlined" sx={{ fontSize: '0.7rem' }}
                                       color={event.gender === 'male' ? 'primary' : event.gender === 'female' ? 'error' : 'success'} />
-                                  </TableCell>
+                                  </TableCell> */}
                                   <TableCell>
                                     {regNumbers.length > 0 ? (
                                       <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
                                         {regNumbers.map((num, i) => (
-                                          <Chip key={i} size="small" label={num} sx={{
-                                            height: 24, fontSize: '0.75rem', fontWeight: 600,
-                                            bgcolor: 'rgba(37,99,235,0.06)',
-                                            border: '1px solid rgba(37,99,235,0.15)',
-                                            color: '#2563EB',
-                                          }} />
+                                         <Chip key={i} size="small" label={num} sx={{
+                                        height: 50, fontSize: '2.5rem', fontWeight: 700,
+                                        bgcolor: 'rgba(37,99,235,0.06)',
+                                        border: '1px solid rgba(37,99,235,0.15)',
+                                        color: '#2563EB',
+                                      }} />
                                         ))}
                                       </Box>
                                     ) : (

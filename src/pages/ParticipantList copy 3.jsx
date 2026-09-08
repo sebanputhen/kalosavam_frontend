@@ -11,24 +11,69 @@ import axiosInstance from "../axiosConfig";
 const printStyles = `
   @media print {
     @page { size: A4 landscape; margin: 5mm; }
-    html, body { background: white !important; margin: 0 !important; padding: 0 !important; }
-    * { margin-left: 0 !important; padding-left: 0 !important; }
-    .no-print, nav, header, footer, aside,
-    .MuiDrawer-root, .MuiAppBar-root,
-    [class*="Sidebar"], [class*="sidebar"],
-    [class*="Navbar"], [class*="navbar"],
-    [class*="AppBar"], [class*="drawer"], [class*="Drawer"] {
-      display: none !important; width: 0 !important; height: 0 !important; overflow: hidden !important;
+
+    /* Force white background and reset ALL margins */
+    html, body {
+      background: white !important;
+      margin: 0 !important;
+      padding: 0 !important;
     }
-    .MuiContainer-root { max-width: 100% !important; padding: 0 !important; margin: 0 !important; }
+
+    /* Kill ALL margin-left and padding-left globally — sidebar pushes content via these */
+    * {
+      margin-left: 0 !important;
+      padding-left: 0 !important;
+    }
+
+    /* HIDE sidebar, navbar, and all non-print elements */
+    .no-print,
+    nav, header, footer, aside,
+    .MuiDrawer-root,
+    .MuiAppBar-root,
+    [class*="Sidebar"],
+    [class*="sidebar"],
+    [class*="Navbar"],
+    [class*="navbar"],
+    [class*="AppBar"],
+    [class*="drawer"],
+    [class*="Drawer"] {
+      display: none !important;
+      width: 0 !important;
+      height: 0 !important;
+      overflow: hidden !important;
+    }
+
+    /* Container full width */
+    .MuiContainer-root {
+      max-width: 100% !important;
+      padding: 0 !important;
+      margin: 0 !important;
+    }
+
+    /* Print area - STATIC for page breaks, full width */
     .print-area {
-      position: static !important; width: 100% !important; margin: 0 !important;
-      padding: 5px !important; box-shadow: none !important; font-size: 10px !important;
-      border-radius: 0 !important; border: none !important; background: white !important;
+      position: static !important;
+      width: 100% !important;
+      margin: 0 !important;
+      padding: 5px !important;
+      box-shadow: none !important;
+      font-size: 10px !important;
+      border-radius: 0 !important;
+      border: none !important;
+      background: white !important;
     }
-    .print-area td, .print-area th { padding: 2px 4px !important; }
+
+    /* Restore left padding only inside table cells */
+    .print-area td, .print-area th {
+      padding: 2px 4px !important;
+    }
     .print-area table { font-size: 9px !important; width: 100% !important; }
-    .print-page-break { page-break-before: always !important; break-before: page !important; }
+
+    /* PAGE BREAK between pages */
+    .print-page-break {
+      page-break-before: always !important;
+      break-before: page !important;
+    }
   }
 `;
 
@@ -84,6 +129,7 @@ const SECTION_CONFIG = {
   'Saint Thomas': 'Classes X-XII'
 };
 const FORANE_ID = '673799a3cb9b4aa181e53fa2';
+
 const SECTION_COLORS = { 'Dominic Savio': '#2563EB', 'Alphonsa': '#10B981', 'Saint Thomas': '#6366F1' };
 
 const ParticipantList = () => {
@@ -92,19 +138,17 @@ const ParticipantList = () => {
   const [selectedSection, setSelectedSection] = useState('');
   const [selectedEvent, setSelectedEvent] = useState('');
   const [selectedGender, setSelectedGender] = useState('');
-  const [selectedStage, setSelectedStage] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [allRegistrations, setAllRegistrations] = useState([]);
   const [allEvents, setAllEvents] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [dataLoaded, setDataLoaded] = useState(false);
-  const [sortBy, setSortBy] = useState('name');
-  const [categoryMap, setCategoryMap] = useState({});
-  const [eventStageMap, setEventStageMap] = useState({});
+const [sortBy, setSortBy] = useState('name');
   const debounceRef = useRef(null);
   const parishMapRef = useRef({});
 
+  // Debounce search
   const handleSearchChange = useCallback((e) => {
     const val = e.target.value;
     setSearchQuery(val);
@@ -119,10 +163,9 @@ const ParticipantList = () => {
     const fetchAll = async () => {
       setIsLoading(true);
       try {
-        const [parishRes, eventsRes, categoriesRes] = await Promise.all([
+        const [parishRes, eventsRes] = await Promise.all([
           axiosInstance.get('/parish'),
-          axiosInstance.get('/events'),
-          axiosInstance.get('/categories')
+          axiosInstance.get('/events')
         ]);
 
         const allParishes = (parishRes.data || []).filter(
@@ -130,52 +173,18 @@ const ParticipantList = () => {
         );
         setParishes(allParishes);
 
+        // Build parish lookup map
         const pMap = {};
         allParishes.forEach(p => { pMap[p._id] = p.name; });
         parishMapRef.current = pMap;
 
-        // Build category lookup: catId → { stage, name, ... }
-        const cats = categoriesRes.data?.data?.categories
-          || categoriesRes.data?.categories
-          || categoriesRes.data || [];
-        const cMap = {};
-        for (const c of cats) { cMap[String(c._id)] = c; }
-        setCategoryMap(cMap);
-
-        console.log('--- DEBUG categories raw:', categoriesRes.data);
-        console.log('--- DEBUG sample category:', cats[0]);
-
-        const evts = eventsRes.data?.data?.events
-          || eventsRes.data?.events
-          || eventsRes.data || [];
-
-        console.log('--- DEBUG events raw:', eventsRes.data);
-        console.log('--- DEBUG sample event:', evts[0]);
-        console.log('--- DEBUG sample event.category:', evts[0]?.category, 'typeof:', typeof evts[0]?.category);
-
-        // Build event → stage map from events + categories
-        const esMap = {};
-        for (const e of evts) {
-          let catId = '';
-          if (e.category && typeof e.category === 'object' && e.category._id) {
-            catId = String(e.category._id);
-            if (e.category.stage) {
-              esMap[String(e._id)] = e.category.stage;
-              continue;
-            }
-          } else {
-            catId = String(e.category || '');
-          }
-          esMap[String(e._id)] = cMap[catId]?.stage || '';
-        }
-        console.log('--- DEBUG eventStageMap:', esMap);
-        setEventStageMap(esMap);
-
+        const evts = eventsRes.data?.data?.events || eventsRes.data || [];
         setAllEvents(evts.map(e => ({
           _id: e._id, eventName: e.eventName, eventType: e.eventType,
-          section: e.section, gender: e.gender, category: e.category
+          section: e.section, gender: e.gender
         })).sort((a, b) => a.eventName.localeCompare(b.eventName)));
 
+        // Fetch ALL registrations in parallel (batch by parish)
         const regResults = await Promise.allSettled(
           allParishes.map(p => axiosInstance.get(`/registrations/parish/${p._id}`))
         );
@@ -197,35 +206,16 @@ const ParticipantList = () => {
     fetchAll();
   }, []);
 
-  // Helper: get stage for a registration via event ID → stage map
-  const getRegStage = useCallback((reg) => {
-    const evtId = typeof reg.event === 'object' ? String(reg.event?._id || '') : String(reg.event || '');
-    return eventStageMap[evtId] || '';
-  }, [eventStageMap]);
-
-  // All filtering is client-side
+  // All filtering is now client-side — instant
   const filteredRegistrations = useMemo(() => {
     if (!dataLoaded) return [];
     const q = debouncedSearch.toLowerCase();
-
-    // DEBUG: log first registration's stage lookup
-    if (allRegistrations.length > 0 && Object.keys(eventStageMap).length > 0) {
-      const first = allRegistrations[0];
-      const fEvtId = typeof first.event === 'object' ? String(first.event?._id || '') : String(first.event || '');
-      console.log('--- DEBUG first reg.event:', first.event);
-      console.log('--- DEBUG first reg.event._id:', first.event?._id);
-      console.log('--- DEBUG lookup eventStageMap[' + fEvtId + ']:', eventStageMap[fEvtId]);
-    }
-
     return allRegistrations.filter(reg => {
       if (selectedParish && (reg.parish?._id || reg.parish) !== selectedParish) return false;
+      // if (selectedSection && reg.section !== selectedSection) return false;
       if (selectedSection && (reg.event?.section !== selectedSection)) return false;
       if (selectedEvent && reg.event?._id !== selectedEvent) return false;
       if (selectedGender && reg.gender !== selectedGender) return false;
-      if (selectedStage) {
-        const stage = getRegStage(reg);
-        if (stage !== selectedStage) return false;
-      }
       if (q) {
         if (!reg.name?.toLowerCase().includes(q) &&
           !reg.registrationNumber?.toLowerCase().includes(q) &&
@@ -233,161 +223,178 @@ const ParticipantList = () => {
       }
       return true;
     });
-  }, [allRegistrations, selectedParish, selectedSection, selectedEvent, selectedGender, selectedStage, debouncedSearch, dataLoaded, getRegStage]);
+  }, [allRegistrations, selectedParish, selectedSection, selectedEvent, selectedGender, debouncedSearch, dataLoaded]);
 
+  // const uniqueParticipants = useMemo(() => {
+  //   const grouped = {};
+  //   for (let i = 0; i < filteredRegistrations.length; i++) {
+  //     const reg = filteredRegistrations[i];
+  //     // const key = `${reg.name}|${reg.standard}|${reg.gender}|${reg.dob}|${reg.parish?._id || reg.parish}`;
+  //     const key = `${reg.name}|${reg.standard}|${reg.gender}|${reg.dob}|${reg.parish?._id || reg.parish}|${reg.event?.section || reg.section}`;
+  //     let entry = grouped[key];
+  //    if (!entry) {
+  //       entry = {
+  //         name: reg.name, standard: reg.standard, gender: reg.gender,
+  //         dob: reg.dob, section: reg.event?.section || reg.section,
+  //         parish: reg.parish?.name || parishMapRef.current[reg.parish] || '',
+  //         events: [], regNums: new Set()
+  //       };
+  //       grouped[key] = entry;
+  //     }
+  //     entry.events.push({ name: reg.event?.eventName, type: reg.event?.eventType });
+  //     if (reg.registrationNumber) entry.regNums.add(reg.registrationNumber);
+  //     if (reg.groupRegistrationNumber) entry.regNums.add(reg.groupRegistrationNumber);
+  //   }
+  //   return Object.values(grouped).sort((a, b) => a.name.localeCompare(b.name));
+  // }, [filteredRegistrations]);
   const uniqueParticipants = useMemo(() => {
-    const grouped = {};
-    for (let i = 0; i < filteredRegistrations.length; i++) {
-      const reg = filteredRegistrations[i];
-      const eventSection = reg.event?.section || reg.section;
-      const key = `${reg.name}|${reg.standard}|${reg.gender}|${reg.dob}|${reg.parish?._id || reg.parish}|${eventSection}`;
-      let entry = grouped[key];
-      if (!entry) {
-        const isCross = reg.section !== eventSection;
-        entry = {
-          name: reg.name, standard: reg.standard, gender: reg.gender,
-          dob: reg.dob, section: eventSection,
-          originalSection: reg.section,
-          isCrossSectionParticipation: isCross,
-          parish: reg.parish?.name || parishMapRef.current[reg.parish] || '',
-          events: [], regNums: new Set()
-        };
-        grouped[key] = entry;
-      }
-      entry.events.push({ name: reg.event?.eventName, type: reg.event?.eventType });
-      if (reg.registrationNumber) entry.regNums.add(reg.registrationNumber);
-      if (reg.groupRegistrationNumber) entry.regNums.add(reg.groupRegistrationNumber);
+  const grouped = {};
+  for (let i = 0; i < filteredRegistrations.length; i++) {
+    const reg = filteredRegistrations[i];
+    const eventSection = reg.event?.section || reg.section;
+    const key = `${reg.name}|${reg.standard}|${reg.gender}|${reg.dob}|${reg.parish?._id || reg.parish}|${eventSection}`;
+    let entry = grouped[key];
+    if (!entry) {
+      const isCross = reg.section !== eventSection;
+      entry = {
+        name: reg.name, standard: reg.standard, gender: reg.gender,
+        dob: reg.dob, section: eventSection,
+        originalSection: reg.section,
+        isCrossSectionParticipation: isCross,
+        parish: reg.parish?.name || parishMapRef.current[reg.parish] || '',
+        events: [], regNums: new Set()
+      };
+      grouped[key] = entry;
     }
-    return Object.values(grouped).sort((a, b) => {
-      switch (sortBy) {
-        case 'parish':
-          return a.parish.localeCompare(b.parish) || a.name.localeCompare(b.name);
-        case 'regNo': {
-          const aNum = [...a.regNums][0] || '';
-          const bNum = [...b.regNums][0] || '';
-          const aVal = parseInt(aNum) || 999999;
-          const bVal = parseInt(bNum) || 999999;
-          return aVal - bVal || a.name.localeCompare(b.name);
-        }
-        case 'class':
-          return (a.standard || '').localeCompare(b.standard || '') || a.name.localeCompare(b.name);
-        case 'section':
-          return (a.section || '').localeCompare(b.section || '') || a.name.localeCompare(b.name);
-        default:
-          return a.name.localeCompare(b.name);
-      }
-    });
-  }, [filteredRegistrations, sortBy]);
+    entry.events.push({ name: reg.event?.eventName, type: reg.event?.eventType });
+    if (reg.registrationNumber) entry.regNums.add(reg.registrationNumber);
+    if (reg.groupRegistrationNumber) entry.regNums.add(reg.groupRegistrationNumber);
+  }
+ return Object.values(grouped).sort((a, b) => {
+  switch (sortBy) {
+    case 'parish':
+      return a.parish.localeCompare(b.parish) || a.name.localeCompare(b.name);
+    case 'regNo': {
+      const aNum = [...a.regNums][0] || '';
+      const bNum = [...b.regNums][0] || '';
+      const aVal = parseInt(aNum) || 999999;
+      const bVal = parseInt(bNum) || 999999;
+      return aVal - bVal || a.name.localeCompare(b.name);
+    }
+    case 'class':
+      return (a.standard || '').localeCompare(b.standard || '') || a.name.localeCompare(b.name);
+    case 'section':
+      return (a.section || '').localeCompare(b.section || '') || a.name.localeCompare(b.name);
+    default:
+      return a.name.localeCompare(b.name);
+  }
+});
+}, [filteredRegistrations, sortBy]);
 
-  const filteredEvents = useMemo(() => {
-    let evts = allEvents;
-    if (selectedSection) evts = evts.filter(e => e.section === selectedSection);
-    if (selectedStage) {
-      evts = evts.filter(e => eventStageMap[String(e._id)] === selectedStage);
-    }
-    return evts;
-  }, [allEvents, selectedSection, selectedStage, eventStageMap]);
+  const filteredEvents = useMemo(() =>
+    selectedSection ? allEvents.filter(e => e.section === selectedSection) : allEvents,
+    [allEvents, selectedSection]
+  );
 
   const stats = useMemo(() => {
     let boys = 0, girls = 0;
     for (const p of uniqueParticipants) { if (p.gender === 'M') boys++; else girls++; }
     return { total: filteredRegistrations.length, unique: uniqueParticipants.length, boys, girls };
   }, [filteredRegistrations.length, uniqueParticipants]);
+const buildPrintHTML = () => {
+  let html = '';
+  const totalPages = Math.max(1, Math.ceil(uniqueParticipants.length / ROWS_PER_PAGE));
 
-  const buildPrintHTML = () => {
-    let html = '';
-    const totalPages = Math.max(1, Math.ceil(uniqueParticipants.length / ROWS_PER_PAGE));
+  for (let pageIdx = 0; pageIdx < totalPages; pageIdx++) {
+    const startRow = pageIdx * ROWS_PER_PAGE;
+    const pageParticipants = uniqueParticipants.slice(startRow, startRow + ROWS_PER_PAGE);
 
-    for (let pageIdx = 0; pageIdx < totalPages; pageIdx++) {
-      const startRow = pageIdx * ROWS_PER_PAGE;
-      const pageParticipants = uniqueParticipants.slice(startRow, startRow + ROWS_PER_PAGE);
+    html += `${pageIdx > 0 ? '<div style="page-break-before: always; break-before: page;"></div>' : ''}`;
 
-      html += `${pageIdx > 0 ? '<div style="page-break-before: always; break-before: page;"></div>' : ''}`;
-
-      html += `
-        <div style="text-align: center; margin-bottom: 8px;">
-          <h4 style="font-size: 16px; font-weight: bold; margin: 0;">ഫൊറോന കലോത്സവം 2026</h4>
-          <div style="font-size: 12px; margin-top: 4px;">
-            ${selectedParish ? `Parish: ${parishName}` : 'All Parishes'}
-            ${selectedSection ? ` | Section: ${selectedSection}` : ''}
-            ${selectedStage ? ` | ${selectedStage}` : ''}
-            ${selectedEvent ? ` | Event: ${allEvents.find(e => e._id === selectedEvent)?.eventName || ''}` : ''}
-            ${selectedGender ? ` | Gender: ${selectedGender === 'M' ? 'Boys' : 'Girls'}` : ''}
-          </div>
-          <div style="font-size: 11px; margin-top: 2px;">
-            Total Participants: ${stats.unique} | Boys: ${stats.boys} | Girls: ${stats.girls} | Page ${pageIdx + 1} of ${totalPages}
-          </div>
+    // Header
+    html += `
+      <div style="text-align: center; margin-bottom: 8px;">
+        <h4 style="font-size: 16px; font-weight: bold; margin: 0;">ഫൊറോന കലോത്സവം 2026</h4>
+        <div style="font-size: 12px; margin-top: 4px;">
+          ${selectedParish ? `Parish: ${parishName}` : 'All Parishes'}
+          ${selectedSection ? ` | Section: ${selectedSection}` : ''}
+          ${selectedEvent ? ` | Event: ${allEvents.find(e => e._id === selectedEvent)?.eventName || ''}` : ''}
+          ${selectedGender ? ` | Gender: ${selectedGender === 'M' ? 'Boys' : 'Girls'}` : ''}
         </div>
-      `;
+        <div style="font-size: 11px; margin-top: 2px;">
+          Total Participants: ${stats.unique} | Boys: ${stats.boys} | Girls: ${stats.girls} | Page ${pageIdx + 1} of ${totalPages}
+        </div>
+      </div>
+    `;
 
-      html += `<table style="font-size: 10px; width: 100%; border-collapse: collapse;">`;
-      html += `<thead><tr>
-        <th style="border: 1px solid black; padding: 4px; text-align: center; width: 30px;">Sl</th>
-        <th style="border: 1px solid black; padding: 4px; text-align: left;">Name</th>
-        <th style="border: 1px solid black; padding: 4px; text-align: left;">Parish</th>
-        <th style="border: 1px solid black; padding: 4px; text-align: center; width: 45px;">Class</th>
-        <th style="border: 1px solid black; padding: 4px; text-align: center; width: 50px;">Gender</th>
-        <th style="border: 1px solid black; padding: 4px; text-align: center; width: 80px;">DOB</th>
-        <th style="border: 1px solid black; padding: 4px; text-align: left;">Section</th>
-        <th style="border: 1px solid black; padding: 4px; text-align: left;">Events</th>
-        <th style="border: 1px solid black; padding: 4px; text-align: left;">Reg No</th>
-      </tr></thead>`;
+    // Table
+    html += `<table style="font-size: 10px; width: 100%; border-collapse: collapse;">`;
+    html += `<thead><tr>
+      <th style="border: 1px solid black; padding: 4px; text-align: center; width: 30px;">Sl</th>
+      <th style="border: 1px solid black; padding: 4px; text-align: left;">Name</th>
+      <th style="border: 1px solid black; padding: 4px; text-align: left;">Parish</th>
+      <th style="border: 1px solid black; padding: 4px; text-align: center; width: 45px;">Class</th>
+      <th style="border: 1px solid black; padding: 4px; text-align: center; width: 50px;">Gender</th>
+      <th style="border: 1px solid black; padding: 4px; text-align: center; width: 80px;">DOB</th>
+      <th style="border: 1px solid black; padding: 4px; text-align: left;">Section</th>
+      <th style="border: 1px solid black; padding: 4px; text-align: left;">Events</th>
+      <th style="border: 1px solid black; padding: 4px; text-align: left;">Reg No</th>
+    </tr></thead>`;
 
-      html += `<tbody>`;
-      pageParticipants.forEach((p, rowIdx) => {
-        const globalIdx = startRow + rowIdx;
-        const dob = new Date(p.dob).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
-        const events = p.events.map(e => e.name).join(', ');
-        const regNums = [...p.regNums].join(', ');
-        const crossBadge = p.isCrossSectionParticipation
-          ? ` <span style="background: #FEF3C7; color: #D97706; border: 1px solid #F59E0B; border-radius: 4px; padding: 1px 4px; font-size: 8px; margin-left: 4px;">From ${p.originalSection} Section</span>`
-          : '';
-        html += `<tr style="height: 22px;">
-          <td style="border: 1px solid black; padding: 3px; text-align: center;">${globalIdx + 1}</td>
-          <td style="border: 1px solid black; padding: 3px;">${p.name}${crossBadge}</td>
-          <td style="border: 1px solid black; padding: 3px;">${p.parish}</td>
-          <td style="border: 1px solid black; padding: 3px; text-align: center;">${p.standard}</td>
-          <td style="border: 1px solid black; padding: 3px; text-align: center;">${p.gender === 'M' ? 'Boy' : 'Girl'}</td>
-          <td style="border: 1px solid black; padding: 3px; text-align: center;">${dob}</td>
-          <td style="border: 1px solid black; padding: 3px;">${p.section}</td>
-          <td style="border: 1px solid black; padding: 3px; font-size: 9px;">${events}</td>
-          <td style="border: 1px solid black; padding: 3px; font-size: 9px;">${regNums}</td>
-        </tr>`;
-      });
-      html += `</tbody></table>`;
-    }
+    html += `<tbody>`;
+    pageParticipants.forEach((p, rowIdx) => {
+      const globalIdx = startRow + rowIdx;
+      const dob = new Date(p.dob).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
+      const events = p.events.map(e => e.name).join(', ');
+      const regNums = [...p.regNums].join(', ');
+const crossBadge = p.isCrossSectionParticipation 
+  ? ` <span style="background: #FEF3C7; color: #D97706; border: 1px solid #F59E0B; border-radius: 4px; padding: 1px 4px; font-size: 8px; margin-left: 4px;">From ${p.originalSection} Section</span>` 
+  : '';
+      html += `<tr style="height: 22px;">
+        <td style="border: 1px solid black; padding: 3px; text-align: center;">${globalIdx + 1}</td>
+        <td style="border: 1px solid black; padding: 3px;">${p.name}${crossBadge}</td>
+        <td style="border: 1px solid black; padding: 3px;">${p.parish}</td>
+        <td style="border: 1px solid black; padding: 3px; text-align: center;">${p.standard}</td>
+        <td style="border: 1px solid black; padding: 3px; text-align: center;">${p.gender === 'M' ? 'Boy' : 'Girl'}</td>
+        <td style="border: 1px solid black; padding: 3px; text-align: center;">${dob}</td>
+        <td style="border: 1px solid black; padding: 3px;">${p.section}</td>
+        <td style="border: 1px solid black; padding: 3px; font-size: 9px;">${events}</td>
+        <td style="border: 1px solid black; padding: 3px; font-size: 9px;">${regNums}</td>
+      </tr>`;
+    });
+    html += `</tbody></table>`;
+  }
 
-    return html;
-  };
+  return html;
+};
 
-  const handlePrint = () => {
-    const content = buildPrintHTML();
-    const win = window.open('', '_blank');
-    win.document.write(`
-      <html>
-      <head>
-        <title>Participant List</title>
-        <style>
-          @page { size: A4 landscape; margin: 5mm; }
-          * { font-family: Arial, sans-serif; margin: 0; padding: 0; box-sizing: border-box; }
-          body { width: 100%; }
-        </style>
-      </head>
-      <body>${content}</body>
-      </html>
-    `);
-    win.document.close();
-    win.focus();
-    win.print();
-    win.close();
-  };
-
+const handlePrint = () => {
+  const content = buildPrintHTML();
+  const win = window.open('', '_blank');
+  win.document.write(`
+    <html>
+    <head>
+      <title>Participant List</title>
+      <style>
+        @page { size: A4 landscape; margin: 5mm; }
+        * { font-family: Arial, sans-serif; margin: 0; padding: 0; box-sizing: border-box; }
+        body { width: 100%; }
+      </style>
+    </head>
+    <body>${content}</body>
+    </html>
+  `);
+  win.document.close();
+  win.focus();
+  win.print();
+  win.close();
+};
   const parishName = useMemo(() =>
     selectedParish ? parishMapRef.current[selectedParish] || '' : '',
     [selectedParish]
   );
 
-  const hasFilter = selectedParish || selectedSection || selectedEvent || selectedGender || selectedStage;
+  const hasFilter = selectedParish || selectedSection || selectedEvent || selectedGender;
 
   const statisticsCards = [
     { title: 'Unique Participants', value: stats.unique, color: '#2563EB', icon: <UserCheck size={24} /> },
@@ -418,10 +425,10 @@ const ParticipantList = () => {
                   </Box>
                   {hasFilter && uniqueParticipants.length > 0 && (
                     <Button variant="contained" startIcon={<Printer size={24} />}
-                      onClick={handlePrint}
-                      sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 600, boxShadow: '0 2px 8px rgba(37,99,235,0.3)' }}>
-                      Print List
-                    </Button>
+  onClick={handlePrint}
+  sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 600, boxShadow: '0 2px 8px rgba(37,99,235,0.3)' }}>
+  Print List
+</Button>
                   )}
                 </PageHeader>
               </Grid>
@@ -433,7 +440,7 @@ const ParticipantList = () => {
                     Filters
                   </Typography>
                   <Grid container spacing={2}>
-                    <Grid item xs={6} md={2}>
+                     <Grid item xs={12} md={2}>
                       <FormControl fullWidth size="small">
                         <InputLabel>Parish</InputLabel>
                         <Select value={selectedParish} label="Parish"
@@ -443,7 +450,7 @@ const ParticipantList = () => {
                         </Select>
                       </FormControl>
                     </Grid>
-                    <Grid item xs={6} md={2}>
+                    <Grid item xs={12} md={2}>
                       <FormControl fullWidth size="small">
                         <InputLabel>Section</InputLabel>
                         <Select value={selectedSection} label="Section"
@@ -455,18 +462,7 @@ const ParticipantList = () => {
                         </Select>
                       </FormControl>
                     </Grid>
-                    <Grid item xs={6} md={1.5}>
-                      <FormControl fullWidth size="small">
-                        <InputLabel>Stage</InputLabel>
-                        <Select value={selectedStage} label="Stage"
-                          onChange={(e) => { setSelectedStage(e.target.value); setSelectedEvent(''); }}>
-                          <MenuItem value="">All</MenuItem>
-                          <MenuItem value="On Stage">On Stage</MenuItem>
-                          <MenuItem value="Off Stage">Off Stage</MenuItem>
-                        </Select>
-                      </FormControl>
-                    </Grid>
-                    <Grid item xs={6} md={2}>
+                     <Grid item xs={12} md={2}>
                       <FormControl fullWidth size="small">
                         <InputLabel>Event</InputLabel>
                         <Select value={selectedEvent} label="Event"
@@ -478,7 +474,7 @@ const ParticipantList = () => {
                         </Select>
                       </FormControl>
                     </Grid>
-                    <Grid item xs={6} md={1.5}>
+                     <Grid item xs={12} md={2}>
                       <FormControl fullWidth size="small">
                         <InputLabel>Gender</InputLabel>
                         <Select value={selectedGender} label="Gender"
@@ -489,11 +485,11 @@ const ParticipantList = () => {
                         </Select>
                       </FormControl>
                     </Grid>
-                    <Grid item xs={6} md={1.5}>
-                      <TextField fullWidth size="small" label="Search"
+                    <Grid item xs={12} md={2}>
+                      <TextField fullWidth size="small" label="Search Name/Reg No"
                         value={searchQuery} onChange={handleSearchChange} />
                     </Grid>
-                    <Grid item xs={6} md={1.5}>
+                    <Grid item xs={12} md={2}>
                       <FormControl fullWidth size="small">
                         <InputLabel>Order By</InputLabel>
                         <Select value={sortBy} label="Order By"
@@ -501,6 +497,7 @@ const ParticipantList = () => {
                           <MenuItem value="name">Name</MenuItem>
                           <MenuItem value="parish">Parish</MenuItem>
                           <MenuItem value="regNo">Reg No</MenuItem>
+                  
                           <MenuItem value="section">Section</MenuItem>
                         </Select>
                       </FormControl>
@@ -551,13 +548,12 @@ const ParticipantList = () => {
 
                         return (
                           <Box key={pageIdx} className={pageIdx > 0 ? 'print-page-break' : ''}>
-                            {/* Print Header */}
+                            {/* Print Header — repeats on every page */}
                             <Box textAlign="center" mb={1} sx={{ display: 'none', '@media print': { display: 'block' } }}>
                               <Typography variant="h5" fontWeight="bold">ഫൊറോന കലോത്സവം 2026</Typography>
                               <Typography variant="subtitle1">
                                 {selectedParish ? `Parish: ${parishName}` : 'All Parishes'}
                                 {selectedSection && ` | Section: ${selectedSection}`}
-                                {selectedStage && ` | ${selectedStage}`}
                                 {selectedEvent && ` | Event: ${allEvents.find(e => e._id === selectedEvent)?.eventName || ''}`}
                               </Typography>
                               <Typography variant="body2">
@@ -565,6 +561,7 @@ const ParticipantList = () => {
                               </Typography>
                             </Box>
 
+                            {/* Page indicator (screen only) */}
                             <Box className="no-print" sx={{ mb: 1 }}>
                               <Chip label={`Page ${pageIdx + 1} of ${totalPages}`} size="small"
                                 sx={{ bgcolor: '#EFF6FF', color: '#2563EB', fontWeight: 600 }} />
@@ -594,7 +591,7 @@ const ParticipantList = () => {
                                     return (
                                       <TableRow key={globalIdx} sx={{ '&:hover': { bgcolor: 'rgba(0,0,0,0.02)' } }}>
                                         <TableCell>{globalIdx + 1}</TableCell>
-                                        <TableCell sx={{ fontWeight: 500 }}>
+                                       <TableCell sx={{ fontWeight: 500 }}>
                                           {participant.name}
                                           {participant.isCrossSectionParticipation && (
                                             <Chip size="small" label={`From ${participant.originalSection} Section`}
@@ -653,6 +650,7 @@ const ParticipantList = () => {
                               </Table>
                             </TableContainer>
 
+                            {/* Page break divider (screen only) */}
                             {!isLastPage && (
                               <Box className="no-print" sx={{ my: 3, borderTop: '3px dashed #ccc', position: 'relative' }}>
                                 <Chip label="Page Break" size="small" sx={{ position: 'absolute', top: -12, left: '50%', transform: 'translateX(-50%)', bgcolor: '#f0f0f0', fontSize: '11px' }} />

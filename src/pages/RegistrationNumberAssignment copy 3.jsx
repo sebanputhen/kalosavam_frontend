@@ -5,7 +5,7 @@ import {
   TableRow, CircularProgress, Alert, Chip, Tabs, Tab, Card, CardContent
 } from '@mui/material';
 import { createTheme, ThemeProvider, styled } from '@mui/material/styles';
-import { Save, RefreshCw, Hash, Users, Layers, Mic, FileText } from 'lucide-react';
+import { Save, RefreshCw, Hash, Users, Layers } from 'lucide-react';
 import axiosInstance from '../axiosConfig';
 
 const theme = createTheme({
@@ -92,89 +92,33 @@ const SECTION_CONFIG = {
 
 const FORANE_ID = '673799a3cb9b4aa181e53fa2';
 
-const TAB_COLORS = {
-  onstage: { main: '#2563EB', bg: 'rgba(37,99,235,0.04)', border: 'rgba(37,99,235,0.12)' },
-  offstage: { main: '#6366F1', bg: 'rgba(99,102,241,0.04)', border: 'rgba(99,102,241,0.12)' },
-  group: { main: '#10B981', bg: 'rgba(16,185,129,0.04)', border: 'rgba(16,185,129,0.12)' },
-};
+const CLASS_TO_SECTION = {};
+for (const [section, config] of Object.entries(SECTION_CONFIG)) {
+  for (const cls of config.classes) {
+    CLASS_TO_SECTION[cls] = section;
+  }
+}
 
 const RegistrationNumberAssignment = () => {
   const [selectedSection, setSelectedSection] = useState('');
   const [parishes, setParishes] = useState([]);
-  const [onStageParticipants, setOnStageParticipants] = useState([]);
-  const [offStageParticipants, setOffStageParticipants] = useState([]);
+  const [participants, setParticipants] = useState([]);
   const [groupEntries, setGroupEntries] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState({ text: '', type: '' });
   const [activeTab, setActiveTab] = useState(0);
 
-  const [onStageStart, setOnStageStart] = useState(1);
-  const [onStageIncrement, setOnStageIncrement] = useState(1);
-  const [offStageStart, setOffStageStart] = useState(1);
-  const [offStageIncrement, setOffStageIncrement] = useState(1);
+  const [singleStart, setSingleStart] = useState(1);
+  const [singleIncrement, setSingleIncrement] = useState(1);
   const [groupStart, setGroupStart] = useState(1);
   const [groupIncrement, setGroupIncrement] = useState(1);
 
-  const [eventStageMap, setEventStageMap] = useState({});
+  useEffect(() => { fetchParishes(); }, []);
 
   useEffect(() => {
-    fetchParishes();
-    fetchEventStageMap();
-  }, []);
-
-  const fetchEventStageMap = async () => {
-    try {
-      const [eventsRes, categoriesRes] = await Promise.all([
-        axiosInstance.get('/events'),
-        axiosInstance.get('/categories')
-      ]);
-
-      // DEBUG: log raw responses
-      console.log('--- DEBUG categories raw:', categoriesRes.data);
-      console.log('--- DEBUG events raw:', eventsRes.data);
-
-      const cats = categoriesRes.data?.data?.categories
-        || categoriesRes.data?.categories
-        || categoriesRes.data || [];
-      const cMap = {};
-      for (const c of cats) { cMap[String(c._id)] = c; }
-      console.log('--- DEBUG categoryMap:', cMap);
-      console.log('--- DEBUG sample category:', cats[0]);
-
-      const evts = eventsRes.data?.data?.events
-        || eventsRes.data?.events
-        || eventsRes.data || [];
-      console.log('--- DEBUG sample event:', evts[0]);
-      console.log('--- DEBUG sample event.category:', evts[0]?.category, 'typeof:', typeof evts[0]?.category);
-
-      const esMap = {};
-      for (const e of evts) {
-        let catId = '';
-        if (e.category && typeof e.category === 'object' && e.category._id) {
-          // category is populated object
-          catId = String(e.category._id);
-          // If populated, stage might be right here
-          if (e.category.stage) {
-            esMap[String(e._id)] = e.category.stage;
-            continue;
-          }
-        } else {
-          catId = String(e.category || '');
-        }
-        esMap[String(e._id)] = cMap[catId]?.stage || '';
-      }
-      console.log('--- DEBUG eventStageMap:', esMap);
-      setEventStageMap(esMap);
-    } catch (error) {
-      console.error('Error fetching event stage map:', error);
-    }
-  };
-
-  useEffect(() => {
-    if (selectedSection && parishes.length > 0 && Object.keys(eventStageMap).length > 0)
-      fetchAllRegistrations();
-  }, [selectedSection, parishes, eventStageMap]);
+    if (selectedSection && parishes.length > 0) fetchAllRegistrations();
+  }, [selectedSection, parishes]);
 
   const fetchParishes = async () => {
     try {
@@ -203,47 +147,30 @@ const RegistrationNumberAssignment = () => {
         )
       );
 
-      const onStageMap = {};
-      const offStageMap = {};
+      const participantMap = {};
       const groupMap = {};
 
-      let debugLogged = false;
       for (const result of results) {
         if (result.status !== 'fulfilled') continue;
         const { parishName, parishId, registrations } = result.value;
 
         for (const reg of registrations) {
-          if (reg.event?.section !== selectedSection) continue;
-
-          // DEBUG: log first registration's event shape
-          if (!debugLogged) {
-            console.log('--- DEBUG first reg.event:', reg.event);
-            console.log('--- DEBUG reg.event._id:', reg.event?._id, 'typeof:', typeof reg.event?._id);
-            console.log('--- DEBUG reg.event.category:', reg.event?.category, 'typeof:', typeof reg.event?.category);
-            const testId = String(reg.event?._id || '');
-            console.log('--- DEBUG lookup eventStageMap[' + testId + ']:', eventStageMap[testId]);
-            debugLogged = true;
-          }
+    if (reg.event?.section !== selectedSection) continue;
           const eventType = reg.event?.eventType;
-
           if (eventType === 'single') {
             const dobStr = reg.dob ? new Date(reg.dob).toISOString().slice(0, 10) : '';
             const key = `${reg.name}|${reg.standard}|${reg.gender}|${dobStr}|${parishId}`;
-            const evtId = typeof reg.event === 'object' ? String(reg.event?._id || '') : String(reg.event || '');
-            const isOffStage = eventStageMap[evtId] === 'Off Stage';
-            const targetMap = isOffStage ? offStageMap : onStageMap;
-            const stageKey = `${key}|${isOffStage ? 'off' : 'on'}`;
 
-            if (!targetMap[stageKey]) {
-              targetMap[stageKey] = {
+            if (!participantMap[key]) {
+              participantMap[key] = {
                 name: reg.name, standard: reg.standard, gender: reg.gender,
                 dob: reg.dob, parish: parishName, parishId,
                 registrationNumber: reg.registrationNumber || '',
                 events: [], registrationIds: []
               };
             }
-            targetMap[stageKey].events.push({ eventName: reg.event.eventName });
-            targetMap[stageKey].registrationIds.push(reg._id);
+            participantMap[key].events.push({ eventName: reg.event.eventName });
+            participantMap[key].registrationIds.push(reg._id);
           } else if (eventType === 'group') {
             const groupKey = `${parishId}|${reg.event._id}`;
             if (!groupMap[groupKey]) {
@@ -259,9 +186,11 @@ const RegistrationNumberAssignment = () => {
         }
       }
 
-      const sortFn = (a, b) => a.parish.localeCompare(b.parish) || a.name.localeCompare(b.name);
-      setOnStageParticipants(Object.values(onStageMap).sort(sortFn));
-      setOffStageParticipants(Object.values(offStageMap).sort(sortFn));
+      setParticipants(
+        Object.values(participantMap).sort((a, b) =>
+          a.parish.localeCompare(b.parish) || a.name.localeCompare(b.name)
+        )
+      );
       setGroupEntries(
         Object.values(groupMap).sort((a, b) =>
           a.parish.localeCompare(b.parish) || a.eventName.localeCompare(b.eventName)
@@ -274,12 +203,11 @@ const RegistrationNumberAssignment = () => {
     }
   };
 
-  const autoAssign = useCallback((setter, start, increment) => {
-    setter(prev => prev.map((p, i) => ({
-      ...p,
-      registrationNumber: String(start + i * increment)
-    })));
-  }, []);
+  const autoAssignSingleNumbers = useCallback(() => {
+    setParticipants(prev =>
+      prev.map((p, i) => ({ ...p, registrationNumber: String(singleStart + i * singleIncrement) }))
+    );
+  }, [singleStart, singleIncrement]);
 
   const autoAssignGroupNumbers = useCallback(() => {
     setGroupEntries(prev =>
@@ -287,8 +215,8 @@ const RegistrationNumberAssignment = () => {
     );
   }, [groupStart, groupIncrement]);
 
-  const updateRegNo = useCallback((setter, index, value) => {
-    setter(prev => {
+  const updateSingleRegNo = useCallback((index, value) => {
+    setParticipants(prev => {
       const updated = [...prev];
       updated[index] = { ...updated[index], registrationNumber: value };
       return updated;
@@ -329,124 +257,26 @@ const RegistrationNumberAssignment = () => {
       }
     }
 
+    const label = field === 'registrationNumber' ? 'Individual' : 'Group';
     setMessage({
-      text: `${successCount} updated${errorCount > 0 ? `, ${errorCount} failed` : ''}`,
+      text: `${label}: ${successCount} updated${errorCount > 0 ? `, ${errorCount} failed` : ''}`,
       type: errorCount > 0 ? 'warning' : 'success'
     });
     setIsSaving(false);
   };
 
+  const saveSingleNumbers = () => batchSave(participants, 'registrationNumber');
+  const saveGroupNumbers = () => batchSave(groupEntries, 'groupRegistrationNumber');
+
   const busy = isLoading || isSaving;
 
-  const allParticipants = [...onStageParticipants, ...offStageParticipants];
-  const uniqueParishes = new Set(
-    allParticipants.map(p => p.parish).concat(groupEntries.map(g => g.parish))
-  ).size;
+  const uniqueParishes = new Set(participants.map(p => p.parish).concat(groupEntries.map(g => g.parish))).size;
 
   const statisticsCards = [
-    { title: 'On Stage', value: onStageParticipants.length, color: TAB_COLORS.onstage.main, icon: <Mic size={24} /> },
-    { title: 'Off Stage', value: offStageParticipants.length, color: TAB_COLORS.offstage.main, icon: <FileText size={24} /> },
-    { title: 'Group Entries', value: groupEntries.length, color: TAB_COLORS.group.main, icon: <Layers size={24} /> },
-    { title: 'Parishes', value: uniqueParishes, color: '#F59E0B', icon: <Hash size={24} /> },
+    { title: 'Individual Participants', value: participants.length, color: '#2563EB', icon: <Users size={24} /> },
+    { title: 'Group Entries', value: groupEntries.length, color: '#10B981', icon: <Layers size={24} /> },
+    { title: 'Parishes', value: uniqueParishes, color: '#6366F1', icon: <Hash size={24} /> },
   ];
-
-  /* ---- Reusable single-participant table ---- */
-  const renderSingleTable = (items, setter, start, setStart, increment, setIncrement, colorKey, label) => {
-    const colors = TAB_COLORS[colorKey];
-    return (
-      <>
-        <Box sx={{ p: 2.5, mb: 3, borderRadius: 3, bgcolor: colors.bg, border: `1px solid ${colors.border}` }}>
-          <Typography variant="subtitle2" sx={{ mb: 2, fontWeight: 600, color: '#1a202c' }}>
-            Auto-Assign Settings ({label})
-          </Typography>
-          <Grid container spacing={2} alignItems="center">
-            <Grid item xs={6} sm={3}>
-              <TextField fullWidth size="small" type="number" label="Starting Number"
-                value={start} onChange={(e) => setStart(Number(e.target.value))} />
-            </Grid>
-            <Grid item xs={6} sm={3}>
-              <TextField fullWidth size="small" type="number" label="Increment"
-                value={increment} onChange={(e) => setIncrement(Number(e.target.value))} />
-            </Grid>
-            <Grid item xs={6} sm={3}>
-              <Button variant="outlined" fullWidth onClick={() => autoAssign(setter, start, increment)}
-                sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 600, height: 40, color: colors.main, borderColor: colors.main }}>
-                Auto Assign
-              </Button>
-            </Grid>
-            <Grid item xs={6} sm={3}>
-              <Button variant="contained" fullWidth startIcon={<Save size={18} />}
-                onClick={() => batchSave(items, 'registrationNumber')} disabled={busy}
-                sx={{
-                  borderRadius: 2, textTransform: 'none', fontWeight: 600, height: 40,
-                  bgcolor: colors.main, boxShadow: `0 2px 8px ${colors.main}4D`,
-                  '&:hover': { bgcolor: colors.main }
-                }}>
-                Save {label}
-              </Button>
-            </Grid>
-          </Grid>
-        </Box>
-
-        <TableContainer sx={{ borderRadius: 2, border: '1px solid rgba(0,0,0,0.08)' }}>
-          <Table size="small">
-            <TableHead>
-              <TableRow sx={{ bgcolor: 'rgba(0,0,0,0.02)' }}>
-                <TableCell sx={{ fontWeight: 600 }}>No.</TableCell>
-                <TableCell sx={{ fontWeight: 600 }}>Reg. Number</TableCell>
-                <TableCell sx={{ fontWeight: 600 }}>Name</TableCell>
-                <TableCell sx={{ fontWeight: 600 }}>Class</TableCell>
-                <TableCell sx={{ fontWeight: 600 }}>Gender</TableCell>
-                <TableCell sx={{ fontWeight: 600 }}>Parish</TableCell>
-                <TableCell sx={{ fontWeight: 600 }}>Events</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {items.map((p, index) => (
-                <TableRow key={`${p.parishId}-${p.name}-${index}`}
-                  sx={{ '&:hover': { bgcolor: 'rgba(0,0,0,0.02)' } }}>
-                  <TableCell>{index + 1}</TableCell>
-                  <TableCell>
-                    <TextField size="small" variant="outlined"
-                      value={p.registrationNumber}
-                      onChange={(e) => updateRegNo(setter, index, e.target.value)}
-                      sx={{ width: 120 }} />
-                  </TableCell>
-                  <TableCell sx={{ fontWeight: 500 }}>{p.name}</TableCell>
-                  <TableCell>{p.standard}</TableCell>
-                  <TableCell>{p.gender === 'M' ? 'Male' : 'Female'}</TableCell>
-                  <TableCell>
-                    <Chip size="small" label={p.parish} sx={{
-                      bgcolor: `${colors.main}15`, color: colors.main,
-                      border: `1px solid ${colors.main}30`, fontWeight: 600
-                    }} />
-                  </TableCell>
-                  <TableCell>
-                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                      {p.events.map((e, i) => (
-                        <Chip key={i} size="small" label={e.eventName}
-                          variant="outlined" sx={{ fontSize: '0.75rem' }} />
-                      ))}
-                    </Box>
-                  </TableCell>
-                </TableRow>
-              ))}
-              {items.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={7} align="center" sx={{ py: 5 }}>
-                    <Users size={48} style={{ color: '#94a3b8', marginBottom: 16 }} />
-                    <Typography color="textSecondary">
-                      No {label.toLowerCase()} participants found in this section
-                    </Typography>
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      </>
-    );
-  };
 
   return (
     <ThemeProvider theme={theme}>
@@ -485,7 +315,7 @@ const RegistrationNumberAssignment = () => {
             )}
 
             {/* Section Selector */}
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid item xs={12} sm={6} md={4}>
               <StyledCard>
                 <StyledCardContent>
                   <FormControl fullWidth>
@@ -506,16 +336,16 @@ const RegistrationNumberAssignment = () => {
 
             {/* Stat Cards */}
             {selectedSection && !busy && statisticsCards.map((stat, index) => (
-              <Grid item xs={6} sm={3} md={2.25} key={index}>
+              <Grid item xs={12} sm={6} md={4} key={index}>
                 <StyledCard>
                   <StyledCardContent>
                     <StatWrapper>
                       <Box>
-                        <Typography variant="subtitle2" sx={{
-                          color: 'text.secondary', fontSize: '0.75rem', fontWeight: 600,
+                        <Typography variant="subtitle1" sx={{
+                          color: 'text.secondary', fontSize: '0.875rem', fontWeight: 600,
                           textTransform: 'uppercase', letterSpacing: '0.1em'
                         }}>{stat.title}</Typography>
-                        <StatValue sx={{ fontSize: '1.75rem' }}>{stat.value}</StatValue>
+                        <StatValue>{stat.value}</StatValue>
                       </Box>
                       <IconBox color={stat.color}>{stat.icon}</IconBox>
                     </StatWrapper>
@@ -536,37 +366,115 @@ const RegistrationNumberAssignment = () => {
                 <ChartCard>
                   <Tabs value={activeTab} onChange={(e, v) => setActiveTab(v)}
                     sx={{ mb: 3, borderBottom: '1px solid rgba(0,0,0,0.08)' }}>
-                    <Tab label={`On Stage (${onStageParticipants.length})`}
-                      icon={<Mic size={16} />} iconPosition="start"
-                      sx={{ textTransform: 'none', fontWeight: 600 }} />
-                    <Tab label={`Off Stage (${offStageParticipants.length})`}
-                      icon={<FileText size={16} />} iconPosition="start"
+                    <Tab label={`Individual (${participants.length})`}
                       sx={{ textTransform: 'none', fontWeight: 600 }} />
                     <Tab label={`Group (${groupEntries.length})`}
-                      icon={<Layers size={16} />} iconPosition="start"
                       sx={{ textTransform: 'none', fontWeight: 600 }} />
                   </Tabs>
 
-                  {/* On Stage Tab */}
-                  {activeTab === 0 && renderSingleTable(
-                    onStageParticipants, setOnStageParticipants,
-                    onStageStart, setOnStageStart, onStageIncrement, setOnStageIncrement,
-                    'onstage', 'On Stage'
-                  )}
-
-                  {/* Off Stage Tab */}
-                  {activeTab === 1 && renderSingleTable(
-                    offStageParticipants, setOffStageParticipants,
-                    offStageStart, setOffStageStart, offStageIncrement, setOffStageIncrement,
-                    'offstage', 'Off Stage'
-                  )}
-
-                  {/* Group Tab */}
-                  {activeTab === 2 && (
+                  {/* Individual Tab */}
+                  {activeTab === 0 && (
                     <>
                       <Box sx={{
                         p: 2.5, mb: 3, borderRadius: 3,
-                        bgcolor: TAB_COLORS.group.bg, border: `1px solid ${TAB_COLORS.group.border}`
+                        bgcolor: 'rgba(37,99,235,0.04)', border: '1px solid rgba(37,99,235,0.12)'
+                      }}>
+                        <Typography variant="subtitle2" sx={{ mb: 2, fontWeight: 600, color: '#1a202c' }}>
+                          Auto-Assign Settings (Individual)
+                        </Typography>
+                        <Grid container spacing={2} alignItems="center">
+                          <Grid item xs={6} sm={3}>
+                            <TextField fullWidth size="small" type="number" label="Starting Number"
+                              value={singleStart} onChange={(e) => setSingleStart(Number(e.target.value))} />
+                          </Grid>
+                          <Grid item xs={6} sm={3}>
+                            <TextField fullWidth size="small" type="number" label="Increment"
+                              value={singleIncrement} onChange={(e) => setSingleIncrement(Number(e.target.value))} />
+                          </Grid>
+                          <Grid item xs={6} sm={3}>
+                            <Button variant="outlined" fullWidth onClick={autoAssignSingleNumbers}
+                              sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 600, height: 40 }}>
+                              Auto Assign
+                            </Button>
+                          </Grid>
+                          <Grid item xs={6} sm={3}>
+                            <Button variant="contained" fullWidth startIcon={<Save size={18} />}
+                              onClick={saveSingleNumbers} disabled={busy}
+                              sx={{
+                                borderRadius: 2, textTransform: 'none', fontWeight: 600, height: 40,
+                                boxShadow: '0 2px 8px rgba(37,99,235,0.3)'
+                              }}>
+                              Save Individual
+                            </Button>
+                          </Grid>
+                        </Grid>
+                      </Box>
+
+                      <TableContainer sx={{ borderRadius: 2, border: '1px solid rgba(0,0,0,0.08)' }}>
+                        <Table size="small">
+                          <TableHead>
+                            <TableRow sx={{ bgcolor: 'rgba(0,0,0,0.02)' }}>
+                              <TableCell sx={{ fontWeight: 600 }}>No.</TableCell>
+                              <TableCell sx={{ fontWeight: 600 }}>Reg. Number</TableCell>
+                              <TableCell sx={{ fontWeight: 600 }}>Name</TableCell>
+                              <TableCell sx={{ fontWeight: 600 }}>Class</TableCell>
+                              <TableCell sx={{ fontWeight: 600 }}>Gender</TableCell>
+                              <TableCell sx={{ fontWeight: 600 }}>Parish</TableCell>
+                              <TableCell sx={{ fontWeight: 600 }}>Events</TableCell>
+                            </TableRow>
+                          </TableHead>
+                          <TableBody>
+                            {participants.map((p, index) => (
+                              <TableRow key={`${p.parishId}-${p.name}-${index}`}
+                                sx={{ '&:hover': { bgcolor: 'rgba(0,0,0,0.02)' } }}>
+                                <TableCell>{index + 1}</TableCell>
+                                <TableCell>
+                                  <TextField size="small" variant="outlined"
+                                    value={p.registrationNumber}
+                                    onChange={(e) => updateSingleRegNo(index, e.target.value)}
+                                    sx={{ width: 120 }} />
+                                </TableCell>
+                                <TableCell sx={{ fontWeight: 500 }}>{p.name}</TableCell>
+                                <TableCell>{p.standard}</TableCell>
+                                <TableCell>{p.gender === 'M' ? 'Male' : 'Female'}</TableCell>
+                                <TableCell>
+                                  <Chip size="small" label={p.parish} sx={{
+                                    bgcolor: '#2563EB15', color: '#2563EB',
+                                    border: '1px solid #2563EB30', fontWeight: 600
+                                  }} />
+                                </TableCell>
+                                <TableCell>
+                                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                                    {p.events.map((e, i) => (
+                                      <Chip key={i} size="small" label={e.eventName}
+                                        variant="outlined" sx={{ fontSize: '0.75rem' }} />
+                                    ))}
+                                  </Box>
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                            {participants.length === 0 && (
+                              <TableRow>
+                                <TableCell colSpan={7} align="center" sx={{ py: 5 }}>
+                                  <Users size={48} style={{ color: '#94a3b8', marginBottom: 16 }} />
+                                  <Typography color="textSecondary">
+                                    No individual participants found in this section
+                                  </Typography>
+                                </TableCell>
+                              </TableRow>
+                            )}
+                          </TableBody>
+                        </Table>
+                      </TableContainer>
+                    </>
+                  )}
+
+                  {/* Group Tab */}
+                  {activeTab === 1 && (
+                    <>
+                      <Box sx={{
+                        p: 2.5, mb: 3, borderRadius: 3,
+                        bgcolor: 'rgba(16,185,129,0.04)', border: '1px solid rgba(16,185,129,0.12)'
                       }}>
                         <Typography variant="subtitle2" sx={{ mb: 2, fontWeight: 600, color: '#1a202c' }}>
                           Auto-Assign Settings (Group)
@@ -582,19 +490,17 @@ const RegistrationNumberAssignment = () => {
                           </Grid>
                           <Grid item xs={6} sm={3}>
                             <Button variant="outlined" fullWidth onClick={autoAssignGroupNumbers}
-                              sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 600, height: 40,
-                                color: TAB_COLORS.group.main, borderColor: TAB_COLORS.group.main }}>
+                              color="secondary"
+                              sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 600, height: 40 }}>
                               Auto Assign
                             </Button>
                           </Grid>
                           <Grid item xs={6} sm={3}>
                             <Button variant="contained" fullWidth startIcon={<Save size={18} />}
-                              onClick={() => batchSave(groupEntries, 'groupRegistrationNumber')} disabled={busy}
+                              onClick={saveGroupNumbers} disabled={busy} color="secondary"
                               sx={{
                                 borderRadius: 2, textTransform: 'none', fontWeight: 600, height: 40,
-                                bgcolor: TAB_COLORS.group.main,
-                                boxShadow: `0 2px 8px ${TAB_COLORS.group.main}4D`,
-                                '&:hover': { bgcolor: TAB_COLORS.group.main }
+                                boxShadow: '0 2px 8px rgba(16,185,129,0.3)'
                               }}>
                               Save Group
                             </Button>
@@ -626,8 +532,8 @@ const RegistrationNumberAssignment = () => {
                                 </TableCell>
                                 <TableCell>
                                   <Chip size="small" label={g.parish} sx={{
-                                    bgcolor: `${TAB_COLORS.group.main}15`, color: TAB_COLORS.group.main,
-                                    border: `1px solid ${TAB_COLORS.group.main}30`, fontWeight: 600
+                                    bgcolor: '#10B98115', color: '#10B981',
+                                    border: '1px solid #10B98130', fontWeight: 600
                                   }} />
                                 </TableCell>
                                 <TableCell sx={{ fontWeight: 500 }}>{g.eventName}</TableCell>
