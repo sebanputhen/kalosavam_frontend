@@ -227,7 +227,7 @@ const menuItems = [
         path: '/addopening',
         label: 'Venue Based  List',
         icon: '📍',
-      }
+      } 
       ,{
         type: 'single',
         path: '/participantList',
