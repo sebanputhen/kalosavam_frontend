@@ -502,6 +502,7 @@ const ParticipantList = () => {
                           <MenuItem value="parish">Parish</MenuItem>
                           <MenuItem value="regNo">Reg No</MenuItem>
                           <MenuItem value="section">Section</MenuItem>
+                           <MenuItem value="events">Events</MenuItem>
                         </Select>
                       </FormControl>
                     </Grid>
