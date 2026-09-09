@@ -47,7 +47,7 @@ import ParishAllocSettings1 from "./pages/ParishallocSettings1";
 import MoveFamily from "./pages/movefamily";
 import Community from "./pages/StageAllocation";
 import Project from "./pages/EventScoringPage";
-import EventScoring from "./pages/EventScoringSimple";
+import EventScoring from "./pages/Eventscoringsimple";
 import ChurchReportPage from './pages/EventRegistrationPrintPage';
 import BulkFamilyPrintPage from './pages/JudgeMarkEntrySheet';
 import OpeningBalance from './pages/ForaneEventRegistration';
