@@ -388,8 +388,8 @@ const Home = () => {
                 <Table size="small" stickyHeader>
                   <TableHead>
                     <TableRow>
-                      {['Event','Section','Type','Stage','Category'].map(h => <TableCell key={h} sx={{ fontWeight: 600, bgcolor: '#fafafa' }}>{h}</TableCell>)}
-                      {['Home','Cross','Total'].map(h => <TableCell key={h} align="center" sx={{ fontWeight: 600, bgcolor: '#fafafa' }}>{h}</TableCell>)}
+                      {['Event','Section','Type','Stage'].map(h => <TableCell key={h} sx={{ fontWeight: 600, bgcolor: '#fafafa' }}>{h}</TableCell>)}
+                      {['Total'].map(h => <TableCell key={h} align="center" sx={{ fontWeight: 600, bgcolor: '#fafafa' }}>{h}</TableCell>)}
                     </TableRow>
                   </TableHead>
                   <TableBody>
@@ -401,9 +401,9 @@ const Home = () => {
                         </TableCell>
                         <TableCell><Chip size="small" label={ev.type === 'single' ? 'Individual' : 'Group'} color={ev.type === 'single' ? 'primary' : 'secondary'} /></TableCell>
                         <TableCell><StageChip stage={ev.stage} /></TableCell>
-                        <TableCell><Typography variant="body2" sx={{ fontSize: '0.8rem' }}>{ev.category || '–'}</Typography></TableCell>
-                        <TableCell align="center">{ev.count}</TableCell>
-                        <TableCell align="center">{ev.crossCount > 0 ? ev.crossCount : '–'}</TableCell>
+                        {/* <TableCell><Typography variant="body2" sx={{ fontSize: '0.8rem' }}>{ev.category || '–'}</Typography></TableCell> */}
+                        {/* <TableCell align="center">{ev.count}</TableCell> */}
+                        {/* <TableCell align="center">{ev.crossCount > 0 ? ev.crossCount : '–'}</TableCell> */}
                         <TableCell align="center" sx={{ fontWeight: 600 }}>{ev.count + ev.crossCount}</TableCell>
                       </TableRow>
                     ))}
