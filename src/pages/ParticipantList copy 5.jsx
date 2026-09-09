@@ -7,7 +7,6 @@ import {
 import { createTheme, ThemeProvider, styled } from '@mui/material/styles';
 import { Printer, Users, UserCheck, Search } from 'lucide-react';
 import axiosInstance from "../axiosConfig";
-import { getParishId } from '../utils/parishAuth';
 
 const printStyles = `
   @media print {
@@ -106,9 +105,6 @@ const ParticipantList = () => {
   const debounceRef = useRef(null);
   const parishMapRef = useRef({});
 
-  const loggedParishId = getParishId();
-  const isParishMode = !!loggedParishId;
-
   const handleSearchChange = useCallback((e) => {
     const val = e.target.value;
     setSearchQuery(val);
@@ -137,11 +133,6 @@ const ParticipantList = () => {
         allParishes.forEach(p => { pMap[p._id] = p.name; });
         parishMapRef.current = pMap;
 
-        // Auto-select parish for parish users
-        if (loggedParishId) {
-          setSelectedParish(loggedParishId);
-        }
-
         const cats = categoriesRes.data?.data?.categories || categoriesRes.data?.categories || categoriesRes.data || [];
         const cMap = {};
         for (const c of cats) { cMap[String(c._id)] = c; }
@@ -165,13 +156,8 @@ const ParticipantList = () => {
           section: e.section, gender: e.gender, category: e.category
         })).sort((a, b) => a.eventName.localeCompare(b.eventName)));
 
-        // For parish mode, only fetch that parish's registrations
-        const parishesToFetch = loggedParishId
-          ? allParishes.filter(p => p._id === loggedParishId)
-          : allParishes;
-
         const regResults = await Promise.allSettled(
-          parishesToFetch.map(p => axiosInstance.get(`/registrations/parish/${p._id}`))
+          allParishes.map(p => axiosInstance.get(`/registrations/parish/${p._id}`))
         );
         const regs = [];
         regResults.forEach(r => {
@@ -187,7 +173,7 @@ const ParticipantList = () => {
       } finally { setIsLoading(false); }
     };
     fetchAll();
-  }, [loggedParishId]);
+  }, []);
 
   const getRegStage = useCallback((reg) => {
     const evtId = typeof reg.event === 'object' ? String(reg.event?._id || '') : String(reg.event || '');
@@ -271,22 +257,6 @@ const ParticipantList = () => {
     return { total: filteredRegistrations.length, unique: uniqueParticipants.length, boys, girls };
   }, [filteredRegistrations.length, uniqueParticipants]);
 
-  const parishName = useMemo(() =>
-    selectedParish ? parishMapRef.current[selectedParish] || '' : '',
-    [selectedParish]
-  );
-
-  const hasFilter = selectedParish || selectedSection || selectedEvent || selectedGender || selectedStage;
-
-  // In parish mode: hide Reg No column when "On Stage" is selected
-  // In admin mode: always show Reg No
-  const showRegNo = isParishMode ? selectedStage !== 'On Stage' : true;
-
-  // In parish mode: hide Parish column since it's always their own parish
-  const showParishCol = !isParishMode;
-
-  const totalCols = 7 + (showRegNo ? 1 : 0) + (showParishCol ? 1 : 0);
-
   const buildPrintHTML = () => {
     let html = '';
     const totalPages = Math.max(1, Math.ceil(uniqueParticipants.length / ROWS_PER_PAGE));
@@ -316,13 +286,13 @@ const ParticipantList = () => {
       html += `<thead><tr>
         <th style="border: 1px solid black; padding: 5px 6px; text-align: center; width: 30px;">Sl</th>
         <th style="border: 1px solid black; padding: 5px 6px; text-align: left;">Name</th>
-        ${showParishCol ? '<th style="border: 1px solid black; padding: 5px 6px; text-align: left;">Parish</th>' : ''}
+        <th style="border: 1px solid black; padding: 5px 6px; text-align: left;">Parish</th>
         <th style="border: 1px solid black; padding: 5px 6px; text-align: center; width: 50px;">Class</th>
         <th style="border: 1px solid black; padding: 5px 6px; text-align: center; width: 55px;">Gender</th>
         <th style="border: 1px solid black; padding: 5px 6px; text-align: center; width: 85px;">DOB</th>
         <th style="border: 1px solid black; padding: 5px 6px; text-align: left;">Section</th>
         <th style="border: 1px solid black; padding: 5px 6px; text-align: left;">Events</th>
-        ${showRegNo ? '<th style="border: 1px solid black; padding: 5px 6px; text-align: left;">Reg No</th>' : ''}
+        <th style="border: 1px solid black; padding: 5px 6px; text-align: left;">Reg No</th>
       </tr></thead>`;
 
       html += `<tbody>`;
@@ -337,13 +307,13 @@ const ParticipantList = () => {
         html += `<tr style="height: 26px;">
           <td style="border: 1px solid black; padding: 4px 6px; text-align: center;">${globalIdx + 1}</td>
           <td style="border: 1px solid black; padding: 4px 6px;">${p.name}${crossBadge}</td>
-          ${showParishCol ? `<td style="border: 1px solid black; padding: 4px 6px;">${p.parish}</td>` : ''}
+          <td style="border: 1px solid black; padding: 4px 6px;">${p.parish}</td>
           <td style="border: 1px solid black; padding: 4px 6px; text-align: center;">${p.standard}</td>
           <td style="border: 1px solid black; padding: 4px 6px; text-align: center;">${p.gender === 'M' ? 'Boy' : 'Girl'}</td>
           <td style="border: 1px solid black; padding: 4px 6px; text-align: center;">${dob}</td>
           <td style="border: 1px solid black; padding: 4px 6px;">${p.section}</td>
           <td style="border: 1px solid black; padding: 4px 6px;">${events}</td>
-          ${showRegNo ? `<td style="border: 1px solid black; padding: 4px 6px;">${regNums}</td>` : ''}
+          <td style="border: 1px solid black; padding: 4px 6px;">${regNums}</td>
         </tr>`;
       });
       html += `</tbody></table>`;
@@ -373,6 +343,13 @@ const ParticipantList = () => {
     win.close();
   };
 
+  const parishName = useMemo(() =>
+    selectedParish ? parishMapRef.current[selectedParish] || '' : '',
+    [selectedParish]
+  );
+
+  const hasFilter = selectedParish || selectedSection || selectedEvent || selectedGender || selectedStage;
+
   const statisticsCards = [
     { title: 'Unique Participants', value: stats.unique, color: '#2563EB', icon: <UserCheck size={24} /> },
     { title: 'Total Registrations', value: stats.total, color: '#10B981', icon: <Users size={24} /> },
@@ -396,9 +373,7 @@ const ParticipantList = () => {
                     </Typography>
                     <Typography variant="body2" sx={{ color: 'text.secondary' }}>
                       {dataLoaded
-                        ? isParishMode
-                          ? `${allRegistrations.length} registrations loaded for ${parishName}`
-                          : `${allRegistrations.length} registrations loaded — filter instantly`
+                        ? `${allRegistrations.length} registrations loaded — filter instantly`
                         : 'Loading all registrations…'}
                     </Typography>
                   </Box>
@@ -417,18 +392,15 @@ const ParticipantList = () => {
                 <ChartCard>
                   <Typography variant="h6" sx={{ fontWeight: 600, color: '#1a202c', mb: 2.5 }}>Filters</Typography>
                   <Grid container spacing={2}>
-                    {/* Parish filter — only for admin */}
-                    {!isParishMode && (
-                      <Grid item xs={6} md={2}>
-                        <FormControl fullWidth size="small"><InputLabel>Parish</InputLabel>
-                          <Select value={selectedParish} label="Parish"
-                            onChange={(e) => { setSelectedParish(e.target.value); setSelectedEvent(''); setSearchQuery(''); setDebouncedSearch(''); }}>
-                            <MenuItem value="">All Parishes</MenuItem>
-                            {parishes.map(p => <MenuItem key={p._id} value={p._id}>{p.name}</MenuItem>)}
-                          </Select>
-                        </FormControl>
-                      </Grid>
-                    )}
+                    <Grid item xs={6} md={2}>
+                      <FormControl fullWidth size="small"><InputLabel>Parish</InputLabel>
+                        <Select value={selectedParish} label="Parish"
+                          onChange={(e) => { setSelectedParish(e.target.value); setSelectedEvent(''); setSearchQuery(''); setDebouncedSearch(''); }}>
+                          <MenuItem value="">All Parishes</MenuItem>
+                          {parishes.map(p => <MenuItem key={p._id} value={p._id}>{p.name}</MenuItem>)}
+                        </Select>
+                      </FormControl>
+                    </Grid>
                     <Grid item xs={6} md={2}>
                       <FormControl fullWidth size="small"><InputLabel>Section</InputLabel>
                         <Select value={selectedSection} label="Section"
@@ -478,7 +450,7 @@ const ParticipantList = () => {
                       <FormControl fullWidth size="small"><InputLabel>Order By</InputLabel>
                         <Select value={sortBy} label="Order By" onChange={(e) => setSortBy(e.target.value)}>
                           <MenuItem value="name">Name</MenuItem>
-                          {!isParishMode && <MenuItem value="parish">Parish</MenuItem>}
+                          <MenuItem value="parish">Parish</MenuItem>
                           <MenuItem value="regNo">Reg No</MenuItem>
                           <MenuItem value="section">Section</MenuItem>
                           <MenuItem value="events">Events</MenuItem>
@@ -490,7 +462,7 @@ const ParticipantList = () => {
               </Grid>
 
               {/* Stat Cards */}
-              {(hasFilter || isParishMode) && !isLoading && statisticsCards.map((stat, i) => (
+              {hasFilter && !isLoading && statisticsCards.map((stat, i) => (
                 <Grid item xs={6} sm={3} key={i} className="no-print">
                   <StyledCard><StyledCardContent>
                     <StatWrapper>
@@ -512,7 +484,7 @@ const ParticipantList = () => {
                     <Typography sx={{ fontSize: '13px', color: '#94A3B8' }}>Loading all registrations (one-time)…</Typography>
                   </Box>
                 </Grid>
-              ) : (hasFilter || isParishMode) ? (
+              ) : hasFilter ? (
                 <Grid item xs={12}>
                   <ChartCard className="print-area">
                     {(() => {
@@ -551,13 +523,13 @@ const ParticipantList = () => {
                                   <TableRow sx={{ bgcolor: 'rgba(0,0,0,0.02)' }}>
                                     <TableCell sx={{ fontWeight: 700, width: 40, fontSize: '0.9rem' }}>Sl</TableCell>
                                     <TableCell sx={{ fontWeight: 700, fontSize: '0.9rem' }}>Name</TableCell>
-                                    {showParishCol && <TableCell sx={{ fontWeight: 700, fontSize: '0.9rem' }}>Parish</TableCell>}
+                                    <TableCell sx={{ fontWeight: 700, fontSize: '0.9rem' }}>Parish</TableCell>
                                     <TableCell sx={{ fontWeight: 700, width: 60, fontSize: '0.9rem' }}>Class</TableCell>
                                     <TableCell sx={{ fontWeight: 700, width: 60, fontSize: '0.9rem' }}>Gender</TableCell>
                                     <TableCell sx={{ fontWeight: 700, width: 100, fontSize: '0.9rem' }}>DOB</TableCell>
                                     <TableCell sx={{ fontWeight: 700, fontSize: '0.9rem' }}>Section</TableCell>
                                     <TableCell sx={{ fontWeight: 700, fontSize: '0.9rem' }}>Events</TableCell>
-                                    {showRegNo && <TableCell sx={{ fontWeight: 700, fontSize: '0.9rem' }}>Reg No</TableCell>}
+                                    <TableCell sx={{ fontWeight: 700, fontSize: '0.9rem' }}>Reg No</TableCell>
                                   </TableRow>
                                 </TableHead>
                                 <TableBody>
@@ -574,14 +546,12 @@ const ParticipantList = () => {
                                               sx={{ ml: 1, fontSize: '0.7rem', height: 20, bgcolor: '#F59E0B15', color: '#D97706', border: '1px solid #F59E0B30', fontWeight: 600 }} />
                                           )}
                                         </TableCell>
-                                        {showParishCol && (
-                                          <TableCell>
-                                            <Chip size="small" label={participant.parish} sx={{
-                                              bgcolor: '#2563EB15', color: '#2563EB', border: '1px solid #2563EB30',
-                                              fontWeight: 600, fontSize: '0.8rem', height: 26
-                                            }} />
-                                          </TableCell>
-                                        )}
+                                        <TableCell>
+                                          <Chip size="small" label={participant.parish} sx={{
+                                            bgcolor: '#2563EB15', color: '#2563EB', border: '1px solid #2563EB30',
+                                            fontWeight: 600, fontSize: '0.8rem', height: 26
+                                          }} />
+                                        </TableCell>
                                         <TableCell sx={{ fontSize: '0.9rem' }}>{participant.standard}</TableCell>
                                         <TableCell sx={{ fontSize: '0.9rem' }}>{participant.gender === 'M' ? 'Boy' : 'Girl'}</TableCell>
                                         <TableCell sx={{ fontSize: '0.85rem' }}>
@@ -604,16 +574,14 @@ const ParticipantList = () => {
                                             ))}
                                           </Box>
                                         </TableCell>
-                                        {showRegNo && (
-                                          <TableCell sx={{ fontSize: '0.85rem', fontWeight: 500 }}>
-                                            {[...participant.regNums].join(', ')}
-                                          </TableCell>
-                                        )}
+                                        <TableCell sx={{ fontSize: '0.85rem', fontWeight: 500 }}>
+                                          {[...participant.regNums].join(', ')}
+                                        </TableCell>
                                       </TableRow>
                                     );
                                   }) : (
                                     <TableRow>
-                                      <TableCell colSpan={totalCols} align="center" sx={{ py: 5 }}>
+                                      <TableCell colSpan={9} align="center" sx={{ py: 5 }}>
                                         <Search size={48} style={{ color: '#94a3b8', marginBottom: 16 }} />
                                         <Typography color="textSecondary">No participants found</Typography>
                                       </TableCell>
