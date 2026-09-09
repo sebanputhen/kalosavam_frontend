@@ -273,6 +273,11 @@ const ParticipantList = () => {
           return (a.standard || '').localeCompare(b.standard || '') || a.name.localeCompare(b.name);
         case 'section':
           return (a.section || '').localeCompare(b.section || '') || a.name.localeCompare(b.name);
+           case 'events': {
+          const aEv = a.events.map(e => e.name).sort().join(',');
+          const bEv = b.events.map(e => e.name).sort().join(',');
+          return aEv.localeCompare(bEv) || a.name.localeCompare(b.name);
+        }
         default:
           return a.name.localeCompare(b.name);
       }
