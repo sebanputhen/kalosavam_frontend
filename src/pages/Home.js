@@ -5,7 +5,7 @@ import {
   Chip, CircularProgress, LinearProgress
 } from "@mui/material";
 import { styled } from "@mui/material/styles";
-import { Users, Calendar, User, Layers, Award, TrendingUp, BarChart3, PieChart } from 'lucide-react';
+import { Users, Calendar, User, Layers, Award, TrendingUp, Mic, FileText } from 'lucide-react';
 import axiosInstance from "../axiosConfig";
 import { getParishId } from '../utils/parishAuth';
 
@@ -100,11 +100,32 @@ const Home = () => {
   const [participants, setParticipants] = useState([]);
   const [parishes, setParishes] = useState([]);
   const [eventParticipantCounts, setEventParticipantCounts] = useState({});
+  const [eventStageMap, setEventStageMap] = useState({});
 
   const parishId = getParishId();
 
+  // Build event → stage map from categories
+  const buildEventStageMap = (eventsData, categoriesData) => {
+    const cats = categoriesData?.data?.categories || categoriesData?.categories || categoriesData || [];
+    const cMap = {};
+    for (const c of cats) { cMap[String(c._id)] = c; }
+
+    const esMap = {};
+    for (const e of eventsData) {
+      let catId = '';
+      if (e.category && typeof e.category === 'object' && e.category._id) {
+        catId = String(e.category._id);
+        if (e.category.stage) { esMap[String(e._id)] = e.category.stage; continue; }
+      } else {
+        catId = String(e.category || '');
+      }
+      esMap[String(e._id)] = cMap[catId]?.stage || '';
+    }
+    return esMap;
+  };
+
   // Process registrations into grouped participants
-  const processRegistrations = (registrations, parishIdVal) => {
+  const processRegistrations = (registrations, parishIdVal, stageMap = {}) => {
     const grouped = {};
     registrations.forEach(reg => {
       if (!reg.event) return;
@@ -116,10 +137,12 @@ const Home = () => {
           registrationNumber: reg.registrationNumber || null, events: []
         };
       }
+      const evtId = typeof reg.event === 'object' ? String(reg.event._id || '') : String(reg.event || '');
       grouped[key].events.push({
         eventId: reg.event._id, eventName: reg.event.eventName,
         eventType: reg.event.eventType, section: reg.event.section,
         category: reg.event.category?.name || '',
+        stage: stageMap[evtId] || '',
         isCrossSectionParticipation: reg.isCrossSectionParticipation || false
       });
     });
@@ -130,43 +153,48 @@ const Home = () => {
     const load = async () => {
       setIsLoading(true);
       try {
-        const requests = [axiosInstance.get("/events")];
+        const baseRequests = [
+          axiosInstance.get("/events"),
+          axiosInstance.get("/categories").catch(() => ({ data: [] }))
+        ];
 
         if (parishId) {
-          requests.push(
+          baseRequests.push(
             axiosInstance.get(`/registrations/parish/${parishId}`),
             axiosInstance.get(`/api/event-stats/parish/${parishId}`).catch(() => ({ data: { data: { stats: [] } } }))
           );
         } else {
-          requests.push(axiosInstance.get("/parish"));
+          baseRequests.push(axiosInstance.get("/parish"));
         }
 
-        const results = await Promise.all(requests);
+        const results = await Promise.all(baseRequests);
         const eventsData = results[0].data.data.events || [];
         setEvents(eventsData);
 
+        const stageMap = buildEventStageMap(eventsData, results[1].data);
+        setEventStageMap(stageMap);
+
         if (parishId) {
-          const registrations = results[1].data?.data?.registrations || results[1].data?.registrations || [];
-          setParticipants(processRegistrations(registrations, parishId));
+          const registrations = results[2].data?.data?.registrations || results[2].data?.registrations || [];
+          setParticipants(processRegistrations(registrations, parishId, stageMap));
           const countsMap = {};
-          (results[2].data?.data?.stats || []).forEach(s => { countsMap[s.eventId] = s.participantCount; });
+          (results[3].data?.data?.stats || []).forEach(s => { countsMap[s.eventId] = s.participantCount; });
           setEventParticipantCounts(countsMap);
         } else {
-          const allParishes = (results[1].data || []).filter(
+          const allParishes = (results[2].data || []).filter(
             p => p.forane === "673799a3cb9b4aa181e53fa2" || p.forane?._id === "673799a3cb9b4aa181e53fa2"
           );
           setParishes(allParishes);
 
           // Load all parish registrations for admin view
           const allParticipants = [];
-          const allCounts = {};
           const parishRequests = allParishes.map(p =>
             axiosInstance.get(`/registrations/parish/${p._id}`).catch(() => ({ data: { data: { registrations: [] } } }))
           );
           const parishResults = await Promise.all(parishRequests);
           parishResults.forEach((res, idx) => {
             const regs = res.data?.data?.registrations || res.data?.registrations || [];
-            allParticipants.push(...processRegistrations(regs, allParishes[idx]._id));
+            allParticipants.push(...processRegistrations(regs, allParishes[idx]._id, stageMap));
           });
           setParticipants(allParticipants);
         }
@@ -190,7 +218,16 @@ const Home = () => {
     const maleCount = participants.filter(p => p.gender === 'M').length;
     const femaleCount = participants.filter(p => p.gender === 'F').length;
 
-    return { totalParticipants, totalEvents, singleCount, groupCount, totalRegistrations, crossParticipants, maleCount, femaleCount };
+    // On/Off stage from event-level stage data
+    let onStageRegs = 0, offStageRegs = 0;
+    participants.forEach(p => {
+      p.events.forEach(ev => {
+        if (ev.stage === 'Off Stage') offStageRegs++;
+        else onStageRegs++;
+      });
+    });
+
+    return { totalParticipants, totalEvents, singleCount, groupCount, totalRegistrations, crossParticipants, maleCount, femaleCount, onStageRegs, offStageRegs };
   }, [participants, events]);
 
   const sectionStats = useMemo(() => {
@@ -215,7 +252,7 @@ const Home = () => {
     participants.forEach(p => {
       p.events.forEach(ev => {
         if (!eventMap[ev.eventId]) {
-          eventMap[ev.eventId] = { name: ev.eventName, type: ev.eventType, section: ev.section, count: 0, crossCount: 0 };
+          eventMap[ev.eventId] = { name: ev.eventName, type: ev.eventType, section: ev.section, stage: ev.stage || '', category: ev.category || '', count: 0, crossCount: 0 };
         }
         if (ev.isCrossSectionParticipation) eventMap[ev.eventId].crossCount++;
         else eventMap[ev.eventId].count++;
@@ -229,11 +266,13 @@ const Home = () => {
     participants.forEach(p => {
       p.events.forEach(ev => {
         const cat = ev.category || 'Uncategorized';
-        if (!catMap[cat]) catMap[cat] = { category: cat, participants: new Set(), events: new Set(), singles: 0, groups: 0 };
+        if (!catMap[cat]) catMap[cat] = { category: cat, stage: ev.stage || '', participants: new Set(), events: new Set(), singles: 0, groups: 0, onStage: 0, offStage: 0 };
         catMap[cat].participants.add(`${p.name}|${p.standard}`);
         catMap[cat].events.add(ev.eventId);
         if (ev.eventType === 'single') catMap[cat].singles++;
         else catMap[cat].groups++;
+        if (ev.stage === 'Off Stage') catMap[cat].offStage++;
+        else catMap[cat].onStage++;
       });
     });
     return Object.values(catMap)
@@ -316,7 +355,7 @@ const Home = () => {
           ))}
 
           {/* Secondary Stats Row */}
-          <Grid item xs={12} sm={4}>
+          <Grid item xs={12} sm={6} md={3}>
             <StyledCard>
               <StyledCardContent>
                 <StatWrapper>
@@ -331,7 +370,26 @@ const Home = () => {
               </StyledCardContent>
             </StyledCard>
           </Grid>
-          <Grid item xs={12} sm={4}>
+          <Grid item xs={12} sm={6} md={3}>
+            <StyledCard>
+              <StyledCardContent>
+                <Typography variant="subtitle2" sx={{ color: 'text.secondary', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', fontSize: '0.75rem', mb: 1.5 }}>
+                  On Stage / Off Stage
+                </Typography>
+                <Box sx={{ display: 'flex', gap: 2 }}>
+                  <Box sx={{ flex: 1, textAlign: 'center', p: 1.5, borderRadius: 2, bgcolor: 'rgba(37,99,235,0.06)', border: '1px solid rgba(37,99,235,0.15)' }}>
+                    <Typography variant="h5" sx={{ fontWeight: 700, color: '#2563EB' }}>{stats.onStageRegs}</Typography>
+                    <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600 }}>On Stage</Typography>
+                  </Box>
+                  <Box sx={{ flex: 1, textAlign: 'center', p: 1.5, borderRadius: 2, bgcolor: 'rgba(99,102,241,0.06)', border: '1px solid rgba(99,102,241,0.15)' }}>
+                    <Typography variant="h5" sx={{ fontWeight: 700, color: '#6366F1' }}>{stats.offStageRegs}</Typography>
+                    <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600 }}>Off Stage</Typography>
+                  </Box>
+                </Box>
+              </StyledCardContent>
+            </StyledCard>
+          </Grid>
+          <Grid item xs={12} sm={6} md={3}>
             <StyledCard>
               <StyledCardContent>
                 <Typography variant="subtitle2" sx={{ color: 'text.secondary', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', fontSize: '0.75rem', mb: 1.5 }}>
@@ -350,13 +408,13 @@ const Home = () => {
               </StyledCardContent>
             </StyledCard>
           </Grid>
-          <Grid item xs={12} sm={4}>
+          <Grid item xs={12} sm={6} md={3}>
             <StyledCard>
               <StyledCardContent>
                 <StatWrapper>
                   <Box>
                     <Typography variant="subtitle2" sx={{ color: 'text.secondary', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', fontSize: '0.75rem' }}>
-                      Cross-Section Participants
+                      Cross-Section
                     </Typography>
                     <StatValue sx={{ fontSize: '1.75rem' }}>{stats.crossParticipants}</StatValue>
                   </Box>
@@ -442,6 +500,8 @@ const Home = () => {
                       <TableCell sx={{ fontWeight: 600, bgcolor: '#fafafa' }}>Event</TableCell>
                       <TableCell sx={{ fontWeight: 600, bgcolor: '#fafafa' }}>Section</TableCell>
                       <TableCell sx={{ fontWeight: 600, bgcolor: '#fafafa' }}>Type</TableCell>
+                      <TableCell sx={{ fontWeight: 600, bgcolor: '#fafafa' }}>Stage</TableCell>
+                      <TableCell sx={{ fontWeight: 600, bgcolor: '#fafafa' }}>Category</TableCell>
                       <TableCell align="center" sx={{ fontWeight: 600, bgcolor: '#fafafa' }}>Home</TableCell>
                       <TableCell align="center" sx={{ fontWeight: 600, bgcolor: '#fafafa' }}>Cross</TableCell>
                       <TableCell align="center" sx={{ fontWeight: 600, bgcolor: '#fafafa' }}>Total</TableCell>
@@ -462,13 +522,30 @@ const Home = () => {
                           <Chip size="small" label={ev.type === 'single' ? 'Individual' : 'Group'}
                             color={ev.type === 'single' ? 'primary' : 'secondary'} />
                         </TableCell>
+                        <TableCell>
+                          {ev.stage ? (
+                            <Chip size="small"
+                              icon={ev.stage === 'Off Stage' ? <FileText size={12} /> : <Mic size={12} />}
+                              label={ev.stage}
+                              sx={{
+                                bgcolor: ev.stage === 'Off Stage' ? 'rgba(99,102,241,0.1)' : 'rgba(37,99,235,0.1)',
+                                color: ev.stage === 'Off Stage' ? '#6366F1' : '#2563EB',
+                                fontWeight: 600, fontSize: '0.7rem',
+                                '& .MuiChip-icon': { color: 'inherit' }
+                              }}
+                            />
+                          ) : <Typography variant="caption" color="textSecondary">–</Typography>}
+                        </TableCell>
+                        <TableCell>
+                          <Typography variant="body2" sx={{ fontSize: '0.8rem' }}>{ev.category || '–'}</Typography>
+                        </TableCell>
                         <TableCell align="center">{ev.count}</TableCell>
                         <TableCell align="center">{ev.crossCount > 0 ? ev.crossCount : '–'}</TableCell>
                         <TableCell align="center" sx={{ fontWeight: 600 }}>{ev.count + ev.crossCount}</TableCell>
                       </TableRow>
                     ))}
                     {eventWiseStats.length === 0 && (
-                      <TableRow><TableCell colSpan={6} align="center" sx={{ py: 3, color: 'text.secondary' }}>No registrations yet</TableCell></TableRow>
+                      <TableRow><TableCell colSpan={8} align="center" sx={{ py: 3, color: 'text.secondary' }}>No registrations yet</TableCell></TableRow>
                     )}
                   </TableBody>
                 </Table>
@@ -485,6 +562,7 @@ const Home = () => {
                   <TableHead>
                     <TableRow sx={{ bgcolor: 'rgba(0,0,0,0.02)' }}>
                       <TableCell sx={{ fontWeight: 600 }}>Category</TableCell>
+                      <TableCell sx={{ fontWeight: 600 }}>Stage</TableCell>
                       <TableCell align="center" sx={{ fontWeight: 600 }}>Events</TableCell>
                       <TableCell align="center" sx={{ fontWeight: 600 }}>Individual</TableCell>
                       <TableCell align="center" sx={{ fontWeight: 600 }}>Group</TableCell>
@@ -495,6 +573,20 @@ const Home = () => {
                     {categoryWiseStats.map((row, i) => (
                       <TableRow key={i} sx={{ '&:hover': { bgcolor: 'rgba(0,0,0,0.02)' } }}>
                         <TableCell sx={{ fontWeight: 500 }}>{row.category}</TableCell>
+                        <TableCell>
+                          {row.stage ? (
+                            <Chip size="small"
+                              icon={row.stage === 'Off Stage' ? <FileText size={12} /> : <Mic size={12} />}
+                              label={row.stage}
+                              sx={{
+                                bgcolor: row.stage === 'Off Stage' ? 'rgba(99,102,241,0.1)' : 'rgba(37,99,235,0.1)',
+                                color: row.stage === 'Off Stage' ? '#6366F1' : '#2563EB',
+                                fontWeight: 600, fontSize: '0.7rem',
+                                '& .MuiChip-icon': { color: 'inherit' }
+                              }}
+                            />
+                          ) : '–'}
+                        </TableCell>
                         <TableCell align="center">{row.eventCount}</TableCell>
                         <TableCell align="center">{row.singles}</TableCell>
                         <TableCell align="center">{row.groups}</TableCell>
@@ -502,7 +594,7 @@ const Home = () => {
                       </TableRow>
                     ))}
                     {categoryWiseStats.length === 0 && (
-                      <TableRow><TableCell colSpan={5} align="center" sx={{ py: 3, color: 'text.secondary' }}>No data</TableCell></TableRow>
+                      <TableRow><TableCell colSpan={6} align="center" sx={{ py: 3, color: 'text.secondary' }}>No data</TableCell></TableRow>
                     )}
                   </TableBody>
                 </Table>
