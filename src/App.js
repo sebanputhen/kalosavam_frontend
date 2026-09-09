@@ -47,6 +47,7 @@ import ParishAllocSettings1 from "./pages/ParishallocSettings1";
 import MoveFamily from "./pages/movefamily";
 import Community from "./pages/StageAllocation";
 import Project from "./pages/EventScoringPage";
+import EventScoring from "./pages/EventScoringPage";
 import ChurchReportPage from './pages/EventRegistrationPrintPage';
 import BulkFamilyPrintPage from './pages/JudgeMarkEntrySheet';
 import OpeningBalance from './pages/ForaneEventRegistration';
@@ -167,7 +168,8 @@ function App() {
                   <Route exact path="/parish-credentials" component={ParishCredentials} />
                   <Route exact path="/movefamily" component={MoveFamily} />
                   <Route exact path="/community" component={Community} />
-                  <Route exact path="/project" component={Project} />
+                  <Route exact path="/project" component={Project} />EventScoringSimple
+                  <Route exact path="/eventscoring" component={EventScoring} />
                   <Route exact path="/report" component={ChurchReportPage} />
                   <Route exact path="/family-print" component={BulkFamilyPrintPage} />
                   <Route exact path="/print-family/:id" component={BulkFamilyPrintPage} />

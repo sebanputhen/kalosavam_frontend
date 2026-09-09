@@ -200,7 +200,7 @@ const menuItems = [
     items: [
       {
         type: 'single',
-        path: '/project',
+        path: '/eventscoring',
         label: 'Score Entry',
         icon: '🏆',
       },
