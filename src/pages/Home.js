@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import {
-  Box, Container, Grid, Card, CardContent, Typography, Paper,
+  Box, Container, Grid, Card, CardContent, Typography,
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
   Chip, CircularProgress, LinearProgress
 } from "@mui/material";
@@ -9,315 +9,239 @@ import { Users, Calendar, User, Layers, Award, TrendingUp, Mic, FileText } from 
 import axiosInstance from "../axiosConfig";
 import { getParishId } from '../utils/parishAuth';
 
-// ====== CONSTANTS ======
 const SECTION_CONFIG = {
   'Dominic Savio': { classes: ['IV', 'V', 'VI'], label: 'Classes IV–VI' },
   'Alphonsa': { classes: ['VII', 'VIII', 'IX'], label: 'Classes VII–IX' },
   'Saint Thomas': { classes: ['X', 'XI', 'XII'], label: 'Classes X–XII' }
 };
+const SECTION_COLORS = { 'Dominic Savio': '#2563EB', 'Alphonsa': '#10B981', 'Saint Thomas': '#6366F1' };
+const CLASS_TO_SECTION = {};
+Object.entries(SECTION_CONFIG).forEach(([sec, cfg]) => cfg.classes.forEach(c => { CLASS_TO_SECTION[c] = sec; }));
 
-const SECTION_COLORS = {
-  'Dominic Savio': '#2563EB',
-  'Alphonsa': '#10B981',
-  'Saint Thomas': '#6366F1',
-};
+// ====== STYLED ======
+const DashboardContainer = styled(Box)({ minHeight: '100vh', background: 'linear-gradient(135deg, #f0f4f8 0%, #d9e2ec 100%)', paddingTop: 24, paddingBottom: 40 });
+const StyledCard = styled(Card)({ borderRadius: 16, boxShadow: '0 1px 3px rgba(0,0,0,0.08), 0 8px 24px rgba(0,0,0,0.04)', border: '1px solid rgba(0,0,0,0.06)', transition: 'transform 0.2s ease, box-shadow 0.2s ease', '&:hover': { transform: 'translateY(-2px)', boxShadow: '0 4px 12px rgba(0,0,0,0.1), 0 12px 32px rgba(0,0,0,0.06)' } });
+const StyledCardContent = styled(CardContent)({ padding: '24px !important' });
+const StatWrapper = styled(Box)({ display: 'flex', justifyContent: 'space-between', alignItems: 'center' });
+const StatValue = styled(Typography)({ fontSize: '2rem', fontWeight: 700, lineHeight: 1.2, marginTop: 4, color: '#1a202c' });
+const IconBox = styled(Box)(({ color }) => ({ width: 52, height: 52, borderRadius: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', background: `linear-gradient(135deg, ${color}22, ${color}11)`, border: `1px solid ${color}33`, color }));
+const ChartCard = styled(Card)({ borderRadius: 16, boxShadow: '0 1px 3px rgba(0,0,0,0.08), 0 8px 24px rgba(0,0,0,0.04)', border: '1px solid rgba(0,0,0,0.06)', padding: 24 });
+const SectionTitle = styled(Typography)({ fontWeight: 600, color: '#1a202c', marginBottom: 20, fontSize: '1.15rem' });
 
-const getParticipantSection = (standard) => {
-  if (!standard) return null;
-  for (const [section, config] of Object.entries(SECTION_CONFIG)) {
-    if (config.classes.includes(standard)) return section;
-  }
-  return null;
-};
+const FORANE_ID = "673799a3cb9b4aa181e53fa2";
+const BATCH_SIZE = 8;
 
-// ====== STYLED COMPONENTS ======
-const DashboardContainer = styled(Box)({
-  minHeight: '100vh',
-  background: 'linear-gradient(135deg, #f0f4f8 0%, #d9e2ec 100%)',
-  paddingTop: 24,
-  paddingBottom: 40,
-});
-
-const StyledCard = styled(Card)(({ theme }) => ({
-  borderRadius: 16,
-  boxShadow: '0 1px 3px rgba(0,0,0,0.08), 0 8px 24px rgba(0,0,0,0.04)',
-  border: '1px solid rgba(0,0,0,0.06)',
-  transition: 'transform 0.2s ease, box-shadow 0.2s ease',
-  '&:hover': {
-    transform: 'translateY(-2px)',
-    boxShadow: '0 4px 12px rgba(0,0,0,0.1), 0 12px 32px rgba(0,0,0,0.06)',
-  }
-}));
-
-const StyledCardContent = styled(CardContent)({
-  padding: '24px !important',
-});
-
-const StatWrapper = styled(Box)({
-  display: 'flex',
-  justifyContent: 'space-between',
-  alignItems: 'center',
-});
-
-const StatValue = styled(Typography)({
-  fontSize: '2rem',
-  fontWeight: 700,
-  lineHeight: 1.2,
-  marginTop: 4,
-  color: '#1a202c',
-});
-
-const IconBox = styled(Box)(({ color }) => ({
-  width: 52,
-  height: 52,
-  borderRadius: 14,
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  background: `linear-gradient(135deg, ${color}22, ${color}11)`,
-  border: `1px solid ${color}33`,
-  color: color,
-}));
-
-const ChartCard = styled(Card)({
-  borderRadius: 16,
-  boxShadow: '0 1px 3px rgba(0,0,0,0.08), 0 8px 24px rgba(0,0,0,0.04)',
-  border: '1px solid rgba(0,0,0,0.06)',
-  padding: 24,
-});
-
-const SectionTitle = styled(Typography)({
-  fontWeight: 600,
-  color: '#1a202c',
-  marginBottom: 20,
-  fontSize: '1.15rem',
-});
-
-// ====== COMPONENT ======
 const Home = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [events, setEvents] = useState([]);
   const [participants, setParticipants] = useState([]);
   const [parishes, setParishes] = useState([]);
-  const [eventParticipantCounts, setEventParticipantCounts] = useState({});
   const [eventStageMap, setEventStageMap] = useState({});
 
   const parishId = getParishId();
 
-  // Build event → stage map from categories
-  const buildEventStageMap = (eventsData, categoriesData) => {
-    const cats = categoriesData?.data?.categories || categoriesData?.categories || categoriesData || [];
-    const cMap = {};
-    for (const c of cats) { cMap[String(c._id)] = c; }
-
-    const esMap = {};
-    for (const e of eventsData) {
-      let catId = '';
-      if (e.category && typeof e.category === 'object' && e.category._id) {
-        catId = String(e.category._id);
-        if (e.category.stage) { esMap[String(e._id)] = e.category.stage; continue; }
-      } else {
-        catId = String(e.category || '');
-      }
-      esMap[String(e._id)] = cMap[catId]?.stage || '';
-    }
-    return esMap;
-  };
-
-  // Process registrations into grouped participants
-  const processRegistrations = (registrations, parishIdVal, stageMap = {}) => {
-    const grouped = {};
-    registrations.forEach(reg => {
-      if (!reg.event) return;
-      const key = `${reg.name}|${reg.standard}|${reg.gender}|${new Date(reg.dob).toISOString().split('T')[0]}`;
-      if (!grouped[key]) {
-        grouped[key] = {
-          _id: reg._id, name: reg.name, standard: reg.standard,
-          gender: reg.gender, dob: reg.dob, parish: parishIdVal,
-          registrationNumber: reg.registrationNumber || null, events: []
-        };
-      }
-      const evtId = typeof reg.event === 'object' ? String(reg.event._id || '') : String(reg.event || '');
-      grouped[key].events.push({
-        eventId: reg.event._id, eventName: reg.event.eventName,
-        eventType: reg.event.eventType, section: reg.event.section,
-        category: reg.event.category?.name || '',
-        stage: stageMap[evtId] || '',
-        isCrossSectionParticipation: reg.isCrossSectionParticipation || false
-      });
-    });
-    return Object.values(grouped);
-  };
-
   useEffect(() => {
+    const ctrl = new AbortController();
     const load = async () => {
       setIsLoading(true);
       try {
-        const baseRequests = [
-          axiosInstance.get("/events"),
-          axiosInstance.get("/categories").catch(() => ({ data: [] }))
-        ];
+        // Fetch events + categories (+ parish-specific or parish list) in parallel
+        const [evtRes, catRes, thirdRes] = await Promise.all([
+          axiosInstance.get("/events", { signal: ctrl.signal }),
+          axiosInstance.get("/categories", { signal: ctrl.signal }).catch(() => ({ data: [] })),
+          parishId
+            ? axiosInstance.get(`/registrations/parish/${parishId}`, { signal: ctrl.signal })
+            : axiosInstance.get("/parish", { signal: ctrl.signal })
+        ]);
 
-        if (parishId) {
-          baseRequests.push(
-            axiosInstance.get(`/registrations/parish/${parishId}`),
-            axiosInstance.get(`/api/event-stats/parish/${parishId}`).catch(() => ({ data: { data: { stats: [] } } }))
-          );
-        } else {
-          baseRequests.push(axiosInstance.get("/parish"));
-        }
-
-        const results = await Promise.all(baseRequests);
-        const eventsData = results[0].data.data.events || [];
+        const eventsData = evtRes.data?.data?.events || [];
         setEvents(eventsData);
 
-        const stageMap = buildEventStageMap(eventsData, results[1].data);
-        setEventStageMap(stageMap);
+        // Build stage map in one pass
+        const cats = catRes.data?.data?.categories || catRes.data?.categories || catRes.data || [];
+        const cMap = {};
+        for (let i = 0; i < cats.length; i++) cMap[String(cats[i]._id)] = cats[i];
+        const esMap = {};
+        for (let i = 0; i < eventsData.length; i++) {
+          const e = eventsData[i];
+          if (e.category?.stage) { esMap[String(e._id)] = e.category.stage; continue; }
+          const catId = typeof e.category === 'object' ? String(e.category?._id || '') : String(e.category || '');
+          esMap[String(e._id)] = cMap[catId]?.stage || '';
+        }
+        setEventStageMap(esMap);
+
+        // Process registrations
+        const processRegs = (registrations, pId) => {
+          const grouped = {};
+          for (let i = 0; i < registrations.length; i++) {
+            const reg = registrations[i];
+            if (!reg.event) continue;
+            const dobStr = reg.dob ? new Date(reg.dob).toISOString().slice(0, 10) : '';
+            const key = `${reg.name}|${reg.standard}|${reg.gender}|${dobStr}`;
+            if (!grouped[key]) {
+              grouped[key] = { _id: reg._id, name: reg.name, standard: reg.standard, gender: reg.gender, dob: reg.dob, parish: pId, events: [] };
+            }
+            const evtId = String(reg.event._id || reg.event || '');
+            grouped[key].events.push({
+              eventId: reg.event._id, eventName: reg.event.eventName,
+              eventType: reg.event.eventType, section: reg.event.section,
+              category: reg.event.category?.name || '',
+              stage: esMap[evtId] || '',
+              isCrossSectionParticipation: reg.isCrossSectionParticipation || false
+            });
+          }
+          return Object.values(grouped);
+        };
 
         if (parishId) {
-          const registrations = results[2].data?.data?.registrations || results[2].data?.registrations || [];
-          setParticipants(processRegistrations(registrations, parishId, stageMap));
-          const countsMap = {};
-          (results[3].data?.data?.stats || []).forEach(s => { countsMap[s.eventId] = s.participantCount; });
-          setEventParticipantCounts(countsMap);
+          const regs = thirdRes.data?.data?.registrations || thirdRes.data?.registrations || [];
+          setParticipants(processRegs(regs, parishId));
         } else {
-          const allParishes = (results[2].data || []).filter(
-            p => p.forane === "673799a3cb9b4aa181e53fa2" || p.forane?._id === "673799a3cb9b4aa181e53fa2"
-          );
+          const allParishes = (thirdRes.data || []).filter(p => p.forane === FORANE_ID || p.forane?._id === FORANE_ID);
           setParishes(allParishes);
 
-          // Load all parish registrations for admin view
+          // Batch parish registration fetches
           const allParticipants = [];
-          const parishRequests = allParishes.map(p =>
-            axiosInstance.get(`/registrations/parish/${p._id}`).catch(() => ({ data: { data: { registrations: [] } } }))
-          );
-          const parishResults = await Promise.all(parishRequests);
-          parishResults.forEach((res, idx) => {
-            const regs = res.data?.data?.registrations || res.data?.registrations || [];
-            allParticipants.push(...processRegistrations(regs, allParishes[idx]._id, stageMap));
-          });
+          for (let i = 0; i < allParishes.length; i += BATCH_SIZE) {
+            const batch = allParishes.slice(i, i + BATCH_SIZE);
+            const results = await Promise.allSettled(
+              batch.map(p => axiosInstance.get(`/registrations/parish/${p._id}`, { signal: ctrl.signal }))
+            );
+            for (let j = 0; j < results.length; j++) {
+              if (results[j].status !== 'fulfilled') continue;
+              const regs = results[j].value.data?.data?.registrations || results[j].value.data?.registrations || [];
+              const pId = batch[j]._id;
+              allParticipants.push(...processRegs(regs, pId));
+            }
+          }
           setParticipants(allParticipants);
         }
       } catch (err) {
-        console.error("Dashboard load failed:", err);
+        if (err.name !== 'CanceledError') console.error("Dashboard load failed:", err);
       } finally {
         setIsLoading(false);
       }
     };
     load();
+    return () => ctrl.abort();
   }, [parishId]);
 
-  // ====== COMPUTED DATA ======
-  const stats = useMemo(() => {
-    const totalParticipants = participants.length;
-    const totalEvents = events.length;
-    const singleCount = events.filter(e => e.eventType === 'single').length;
-    const groupCount = events.filter(e => e.eventType === 'group').length;
-    const totalRegistrations = participants.reduce((sum, p) => sum + p.events.length, 0);
-    const crossParticipants = participants.filter(p => p.events.some(e => e.isCrossSectionParticipation)).length;
-    const maleCount = participants.filter(p => p.gender === 'M').length;
-    const femaleCount = participants.filter(p => p.gender === 'F').length;
-
-    // On/Off stage from event-level stage data
-    let onStageRegs = 0, offStageRegs = 0;
-    participants.forEach(p => {
-      p.events.forEach(ev => {
-        if (ev.stage === 'Off Stage') offStageRegs++;
-        else onStageRegs++;
-      });
-    });
-
-    return { totalParticipants, totalEvents, singleCount, groupCount, totalRegistrations, crossParticipants, maleCount, femaleCount, onStageRegs, offStageRegs };
-  }, [participants, events]);
-
-  const sectionStats = useMemo(() => {
-    return Object.entries(SECTION_CONFIG).map(([section, config]) => {
-      const secParticipants = participants.filter(p => getParticipantSection(p.standard) === section);
-      const secEvents = events.filter(e => e.section === section);
-      const singles = secEvents.filter(e => e.eventType === 'single').length;
-      const groups = secEvents.filter(e => e.eventType === 'group').length;
-      const crossEvents = events.filter(e =>
-        e.section !== section && e.allowCrossSectionParticipation && e.crossSectionAllowedSections?.includes(section)
-      ).length;
-      const totalRegs = secParticipants.reduce((sum, p) => sum + p.events.length, 0);
-      const males = secParticipants.filter(p => p.gender === 'M').length;
-      const females = secParticipants.filter(p => p.gender === 'F').length;
-
-      return { section, config, participantCount: secParticipants.length, eventCount: secEvents.length, singles, groups, crossEvents, totalRegs, males, females };
-    });
-  }, [participants, events]);
-
-  const eventWiseStats = useMemo(() => {
+  // ====== SINGLE-PASS COMPUTED DATA ======
+  const computed = useMemo(() => {
+    let totalRegs = 0, maleCount = 0, femaleCount = 0, crossCount = 0, onStageRegs = 0, offStageRegs = 0;
     const eventMap = {};
-    participants.forEach(p => {
-      p.events.forEach(ev => {
+    const stageGroupMap = {};
+    const parishMap = {};
+    const sectionMap = {};
+
+    // Init sections
+    for (const [sec, cfg] of Object.entries(SECTION_CONFIG)) {
+      sectionMap[sec] = { section: sec, config: cfg, participantCount: 0, singles: 0, groups: 0, crossEvents: 0, totalRegs: 0, males: 0, females: 0 };
+    }
+
+    // Single pass over participants
+    for (let i = 0; i < participants.length; i++) {
+      const p = participants[i];
+      const isMale = p.gender === 'M';
+      if (isMale) maleCount++; else femaleCount++;
+
+      const sec = CLASS_TO_SECTION[p.standard] || null;
+      if (sec && sectionMap[sec]) {
+        sectionMap[sec].participantCount++;
+        if (isMale) sectionMap[sec].males++; else sectionMap[sec].females++;
+      }
+
+      // Parish
+      if (!parishMap[p.parish]) parishMap[p.parish] = { parishId: p.parish, count: 0, males: 0, females: 0, totalRegs: 0 };
+      parishMap[p.parish].count++;
+      if (isMale) parishMap[p.parish].males++; else parishMap[p.parish].females++;
+
+      const hasCross = p.events.some(e => e.isCrossSectionParticipation);
+      if (hasCross) crossCount++;
+
+      totalRegs += p.events.length;
+      parishMap[p.parish].totalRegs += p.events.length;
+      if (sec && sectionMap[sec]) sectionMap[sec].totalRegs += p.events.length;
+
+      for (let j = 0; j < p.events.length; j++) {
+        const ev = p.events[j];
+        const isOff = ev.stage === 'Off Stage';
+        if (isOff) offStageRegs++; else onStageRegs++;
+
+        // Event map
         if (!eventMap[ev.eventId]) {
           eventMap[ev.eventId] = { name: ev.eventName, type: ev.eventType, section: ev.section, stage: ev.stage || '', category: ev.category || '', count: 0, crossCount: 0 };
         }
         if (ev.isCrossSectionParticipation) eventMap[ev.eventId].crossCount++;
         else eventMap[ev.eventId].count++;
-      });
-    });
-    return Object.values(eventMap).sort((a, b) => (b.count + b.crossCount) - (a.count + a.crossCount));
-  }, [participants]);
 
-  const categoryWiseStats = useMemo(() => {
-    const catMap = {};
-    participants.forEach(p => {
-      p.events.forEach(ev => {
-        const cat = ev.category || 'Uncategorized';
-        if (!catMap[cat]) catMap[cat] = { category: cat, stage: ev.stage || '', participants: new Set(), events: new Set(), singles: 0, groups: 0, onStage: 0, offStage: 0 };
-        catMap[cat].participants.add(`${p.name}|${p.standard}`);
-        catMap[cat].events.add(ev.eventId);
-        if (ev.eventType === 'single') catMap[cat].singles++;
-        else catMap[cat].groups++;
-        if (ev.stage === 'Off Stage') catMap[cat].offStage++;
-        else catMap[cat].onStage++;
-      });
-    });
-    return Object.values(catMap)
-      .map(c => ({ ...c, participantCount: c.participants.size, eventCount: c.events.size }))
-      .sort((a, b) => b.participantCount - a.participantCount);
-  }, [participants]);
+        // Stage group map (On Stage / Off Stage breakdown by section)
+        const stageLabel = isOff ? 'Off Stage' : 'On Stage';
+        const sgKey = `${stageLabel}|${ev.section || 'Unknown'}`;
+        if (!stageGroupMap[sgKey]) stageGroupMap[sgKey] = { stage: stageLabel, section: ev.section || 'Unknown', pSet: new Set(), eSet: new Set(), singles: 0, groups: 0 };
+        stageGroupMap[sgKey].pSet.add(`${p.name}|${p.standard}`);
+        stageGroupMap[sgKey].eSet.add(ev.eventId);
+        if (ev.eventType === 'single') stageGroupMap[sgKey].singles++; else stageGroupMap[sgKey].groups++;
+      }
+    }
 
-  const parishWiseStats = useMemo(() => {
-    const pMap = {};
-    participants.forEach(p => {
-      const pid = p.parish;
-      if (!pMap[pid]) pMap[pid] = { parishId: pid, count: 0, males: 0, females: 0, totalRegs: 0 };
-      pMap[pid].count++;
-      if (p.gender === 'M') pMap[pid].males++;
-      else pMap[pid].females++;
-      pMap[pid].totalRegs += p.events.length;
-    });
-    return Object.values(pMap)
-      .map(ps => {
-        const parish = parishes.find(p => p._id === ps.parishId);
-        return { ...ps, name: parish?.name || ps.parishId };
-      })
-      .sort((a, b) => b.count - a.count);
-  }, [participants, parishes]);
+    // Section event counts from events array (not from participants)
+    for (let i = 0; i < events.length; i++) {
+      const e = events[i];
+      if (sectionMap[e.section]) {
+        if (e.eventType === 'single') sectionMap[e.section].singles++;
+        else sectionMap[e.section].groups++;
+      }
+      // Cross-section availability
+      if (e.allowCrossSectionParticipation && e.crossSectionAllowedSections) {
+        for (const s of e.crossSectionAllowedSections) {
+          if (s !== e.section && sectionMap[s]) sectionMap[s].crossEvents++;
+        }
+      }
+    }
+
+    const eventWise = Object.values(eventMap).sort((a, b) => (b.count + b.crossCount) - (a.count + a.crossCount));
+    const stageWise = Object.values(stageGroupMap).map(c => ({ ...c, participantCount: c.pSet.size, eventCount: c.eSet.size }))
+      .sort((a, b) => a.stage.localeCompare(b.stage) || a.section.localeCompare(b.section));
+    const parishWise = Object.values(parishMap).map(ps => {
+      const par = parishes.find(p => p._id === ps.parishId);
+      return { ...ps, name: par?.name || ps.parishId };
+    }).sort((a, b) => b.count - a.count);
+    const sectionArr = Object.values(sectionMap);
+
+    return {
+      totalParticipants: participants.length, totalEvents: events.length,
+      singleCount: events.filter(e => e.eventType === 'single').length,
+      groupCount: events.filter(e => e.eventType === 'group').length,
+      totalRegs, maleCount, femaleCount, crossCount, onStageRegs, offStageRegs,
+      eventWise, stageWise, parishWise, sectionArr
+    };
+  }, [participants, events, parishes]);
 
   const topCards = [
-    { title: 'Total Participants', value: stats.totalParticipants, color: '#2563EB', icon: <Users size={24} /> },
-    { title: 'Total Events', value: stats.totalEvents, color: '#10B981', icon: <Calendar size={24} /> },
-    { title: 'Individual Events', value: stats.singleCount, color: '#6366F1', icon: <User size={24} /> },
-    { title: 'Group Events', value: stats.groupCount, color: '#F59E0B', icon: <Layers size={24} /> },
+    { title: 'Total Participants', value: computed.totalParticipants, color: '#2563EB', icon: <Users size={24} /> },
+    { title: 'Total Events', value: computed.totalEvents, color: '#10B981', icon: <Calendar size={24} /> },
+    { title: 'Individual Events', value: computed.singleCount, color: '#6366F1', icon: <User size={24} /> },
+    { title: 'Group Events', value: computed.groupCount, color: '#F59E0B', icon: <Layers size={24} /> },
   ];
 
   if (isLoading) {
     return (
       <DashboardContainer>
         <Container maxWidth="xl">
-          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
-            <CircularProgress />
-          </Box>
+          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}><CircularProgress /></Box>
         </Container>
       </DashboardContainer>
     );
   }
 
-  const maxParticipants = Math.max(...sectionStats.map(s => s.participantCount), 1);
+  const maxP = Math.max(...computed.sectionArr.map(s => s.participantCount), 1);
+
+  // Reusable stage chip
+  const StageChip = ({ stage }) => stage ? (
+    <Chip size="small" icon={stage === 'Off Stage' ? <FileText size={12} /> : <Mic size={12} />} label={stage}
+      sx={{ bgcolor: stage === 'Off Stage' ? 'rgba(99,102,241,0.1)' : 'rgba(37,99,235,0.1)', color: stage === 'Off Stage' ? '#6366F1' : '#2563EB', fontWeight: 600, fontSize: '0.7rem', '& .MuiChip-icon': { color: 'inherit' } }} />
+  ) : <Typography variant="caption" color="textSecondary">–</Typography>;
 
   return (
     <DashboardContainer>
@@ -326,25 +250,19 @@ const Home = () => {
           {/* Header */}
           <Grid item xs={12}>
             <Box sx={{ mb: 1 }}>
-              <Typography variant="h4" sx={{ fontWeight: 700, color: '#1a202c', mb: 0.5 }}>
-                Dashboard
-              </Typography>
-              <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                Forane Kalolsavam — Registration Overview
-              </Typography>
+              <Typography variant="h4" sx={{ fontWeight: 700, color: '#1a202c', mb: 0.5 }}>Dashboard</Typography>
+              <Typography variant="body2" sx={{ color: 'text.secondary' }}>Forane Kalolsavam — Registration Overview</Typography>
             </Box>
           </Grid>
 
           {/* Top Stat Cards */}
           {topCards.map((stat, index) => (
-            <Grid item xs={12} sm={6} md={3} key={index}>
+            <Grid item xs={6} sm={6} md={3} key={index}>
               <StyledCard>
                 <StyledCardContent>
                   <StatWrapper>
                     <Box>
-                      <Typography variant="subtitle2" sx={{ color: 'text.secondary', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', fontSize: '0.75rem' }}>
-                        {stat.title}
-                      </Typography>
+                      <Typography variant="subtitle2" sx={{ color: 'text.secondary', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', fontSize: '0.75rem' }}>{stat.title}</Typography>
                       <StatValue>{stat.value}</StatValue>
                     </Box>
                     <IconBox color={stat.color}>{stat.icon}</IconBox>
@@ -356,79 +274,61 @@ const Home = () => {
 
           {/* Secondary Stats Row */}
           <Grid item xs={12} sm={6} md={3}>
-            <StyledCard>
-              <StyledCardContent>
-                <StatWrapper>
-                  <Box>
-                    <Typography variant="subtitle2" sx={{ color: 'text.secondary', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', fontSize: '0.75rem' }}>
-                      Total Registrations
-                    </Typography>
-                    <StatValue sx={{ fontSize: '1.75rem' }}>{stats.totalRegistrations}</StatValue>
-                  </Box>
-                  <IconBox color="#8B5CF6"><TrendingUp size={22} /></IconBox>
-                </StatWrapper>
-              </StyledCardContent>
-            </StyledCard>
-          </Grid>
-          <Grid item xs={12} sm={6} md={3}>
-            <StyledCard>
-              <StyledCardContent>
-                <Typography variant="subtitle2" sx={{ color: 'text.secondary', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', fontSize: '0.75rem', mb: 1.5 }}>
-                  On Stage / Off Stage
-                </Typography>
-                <Box sx={{ display: 'flex', gap: 2 }}>
-                  <Box sx={{ flex: 1, textAlign: 'center', p: 1.5, borderRadius: 2, bgcolor: 'rgba(37,99,235,0.06)', border: '1px solid rgba(37,99,235,0.15)' }}>
-                    <Typography variant="h5" sx={{ fontWeight: 700, color: '#2563EB' }}>{stats.onStageRegs}</Typography>
-                    <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600 }}>On Stage</Typography>
-                  </Box>
-                  <Box sx={{ flex: 1, textAlign: 'center', p: 1.5, borderRadius: 2, bgcolor: 'rgba(99,102,241,0.06)', border: '1px solid rgba(99,102,241,0.15)' }}>
-                    <Typography variant="h5" sx={{ fontWeight: 700, color: '#6366F1' }}>{stats.offStageRegs}</Typography>
-                    <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600 }}>Off Stage</Typography>
-                  </Box>
+            <StyledCard><StyledCardContent>
+              <StatWrapper>
+                <Box>
+                  <Typography variant="subtitle2" sx={{ color: 'text.secondary', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', fontSize: '0.75rem' }}>Total Registrations</Typography>
+                  <StatValue sx={{ fontSize: '1.75rem' }}>{computed.totalRegs}</StatValue>
                 </Box>
-              </StyledCardContent>
-            </StyledCard>
+                <IconBox color="#8B5CF6"><TrendingUp size={22} /></IconBox>
+              </StatWrapper>
+            </StyledCardContent></StyledCard>
           </Grid>
           <Grid item xs={12} sm={6} md={3}>
-            <StyledCard>
-              <StyledCardContent>
-                <Typography variant="subtitle2" sx={{ color: 'text.secondary', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', fontSize: '0.75rem', mb: 1.5 }}>
-                  Gender Split
-                </Typography>
-                <Box sx={{ display: 'flex', gap: 2 }}>
-                  <Box sx={{ flex: 1, textAlign: 'center', p: 1.5, borderRadius: 2, bgcolor: 'rgba(37,99,235,0.06)', border: '1px solid rgba(37,99,235,0.15)' }}>
-                    <Typography variant="h5" sx={{ fontWeight: 700, color: '#2563EB' }}>{stats.maleCount}</Typography>
-                    <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600 }}>Boys</Typography>
-                  </Box>
-                  <Box sx={{ flex: 1, textAlign: 'center', p: 1.5, borderRadius: 2, bgcolor: 'rgba(236,72,153,0.06)', border: '1px solid rgba(236,72,153,0.15)' }}>
-                    <Typography variant="h5" sx={{ fontWeight: 700, color: '#EC4899' }}>{stats.femaleCount}</Typography>
-                    <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600 }}>Girls</Typography>
-                  </Box>
+            <StyledCard><StyledCardContent>
+              <Typography variant="subtitle2" sx={{ color: 'text.secondary', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', fontSize: '0.75rem', mb: 1.5 }}>On Stage / Off Stage</Typography>
+              <Box sx={{ display: 'flex', gap: 2 }}>
+                <Box sx={{ flex: 1, textAlign: 'center', p: 1.5, borderRadius: 2, bgcolor: 'rgba(37,99,235,0.06)', border: '1px solid rgba(37,99,235,0.15)' }}>
+                  <Typography variant="h5" sx={{ fontWeight: 700, color: '#2563EB' }}>{computed.onStageRegs}</Typography>
+                  <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600 }}>On Stage</Typography>
                 </Box>
-              </StyledCardContent>
-            </StyledCard>
+                <Box sx={{ flex: 1, textAlign: 'center', p: 1.5, borderRadius: 2, bgcolor: 'rgba(99,102,241,0.06)', border: '1px solid rgba(99,102,241,0.15)' }}>
+                  <Typography variant="h5" sx={{ fontWeight: 700, color: '#6366F1' }}>{computed.offStageRegs}</Typography>
+                  <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600 }}>Off Stage</Typography>
+                </Box>
+              </Box>
+            </StyledCardContent></StyledCard>
           </Grid>
           <Grid item xs={12} sm={6} md={3}>
-            <StyledCard>
-              <StyledCardContent>
-                <StatWrapper>
-                  <Box>
-                    <Typography variant="subtitle2" sx={{ color: 'text.secondary', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', fontSize: '0.75rem' }}>
-                      Cross-Section
-                    </Typography>
-                    <StatValue sx={{ fontSize: '1.75rem' }}>{stats.crossParticipants}</StatValue>
-                  </Box>
-                  <IconBox color="#0EA5E9"><Award size={22} /></IconBox>
-                </StatWrapper>
-              </StyledCardContent>
-            </StyledCard>
+            <StyledCard><StyledCardContent>
+              <Typography variant="subtitle2" sx={{ color: 'text.secondary', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', fontSize: '0.75rem', mb: 1.5 }}>Gender Split</Typography>
+              <Box sx={{ display: 'flex', gap: 2 }}>
+                <Box sx={{ flex: 1, textAlign: 'center', p: 1.5, borderRadius: 2, bgcolor: 'rgba(37,99,235,0.06)', border: '1px solid rgba(37,99,235,0.15)' }}>
+                  <Typography variant="h5" sx={{ fontWeight: 700, color: '#2563EB' }}>{computed.maleCount}</Typography>
+                  <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600 }}>Boys</Typography>
+                </Box>
+                <Box sx={{ flex: 1, textAlign: 'center', p: 1.5, borderRadius: 2, bgcolor: 'rgba(236,72,153,0.06)', border: '1px solid rgba(236,72,153,0.15)' }}>
+                  <Typography variant="h5" sx={{ fontWeight: 700, color: '#EC4899' }}>{computed.femaleCount}</Typography>
+                  <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600 }}>Girls</Typography>
+                </Box>
+              </Box>
+            </StyledCardContent></StyledCard>
+          </Grid>
+          <Grid item xs={12} sm={6} md={3}>
+            <StyledCard><StyledCardContent>
+              <StatWrapper>
+                <Box>
+                  <Typography variant="subtitle2" sx={{ color: 'text.secondary', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', fontSize: '0.75rem' }}>Cross-Section</Typography>
+                  <StatValue sx={{ fontSize: '1.75rem' }}>{computed.crossCount}</StatValue>
+                </Box>
+                <IconBox color="#0EA5E9"><Award size={22} /></IconBox>
+              </StatWrapper>
+            </StyledCardContent></StyledCard>
           </Grid>
 
-          {/* Section Overview Cards */}
-          <Grid item xs={12}>
-            <SectionTitle variant="h6">Section Overview</SectionTitle>
-          </Grid>
-          {sectionStats.map(({ section, config, participantCount, eventCount, singles, groups, crossEvents, totalRegs, males, females }) => {
+          {/* Section Overview */}
+          <Grid item xs={12}><SectionTitle variant="h6">Section Overview</SectionTitle></Grid>
+          {computed.sectionArr.map(({ section, config, participantCount, singles, groups, crossEvents, totalRegs, males, females }) => {
             const sColor = SECTION_COLORS[section];
             return (
               <Grid item xs={12} md={4} key={section}>
@@ -440,20 +340,14 @@ const Home = () => {
                     </Box>
                     <IconBox color={sColor}><Award size={22} /></IconBox>
                   </Box>
-
-                  {/* Participant bar */}
                   <Box sx={{ mb: 2 }}>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
                       <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.secondary' }}>Participants</Typography>
                       <Typography variant="caption" sx={{ fontWeight: 700, color: sColor }}>{participantCount}</Typography>
                     </Box>
-                    <LinearProgress
-                      variant="determinate"
-                      value={(participantCount / maxParticipants) * 100}
-                      sx={{ height: 8, borderRadius: 4, bgcolor: `${sColor}15`, '& .MuiLinearProgress-bar': { bgcolor: sColor, borderRadius: 4 } }}
-                    />
+                    <LinearProgress variant="determinate" value={(participantCount / maxP) * 100}
+                      sx={{ height: 8, borderRadius: 4, bgcolor: `${sColor}15`, '& .MuiLinearProgress-bar': { bgcolor: sColor, borderRadius: 4 } }} />
                   </Box>
-
                   <Box sx={{ display: 'flex', gap: 1.5, mb: 2 }}>
                     <Box sx={{ flex: 1, textAlign: 'center', p: 1, borderRadius: 1.5, bgcolor: 'rgba(37,99,235,0.05)', border: '1px solid rgba(37,99,235,0.12)' }}>
                       <Typography variant="body2" fontWeight="700" color="primary">{males}</Typography>
@@ -468,7 +362,6 @@ const Home = () => {
                       <Typography variant="caption" color="textSecondary">Regs</Typography>
                     </Box>
                   </Box>
-
                   <Grid container spacing={1}>
                     <Grid item xs={6}>
                       <Box sx={{ p: 1, textAlign: 'center', borderRadius: 1.5, bgcolor: 'rgba(37,99,235,0.05)', border: '1px solid rgba(37,99,235,0.15)' }}>
@@ -481,9 +374,7 @@ const Home = () => {
                       </Box>
                     </Grid>
                   </Grid>
-                  {crossEvents > 0 && (
-                    <Typography variant="caption" color="info.main" sx={{ mt: 1.5 }}>+ {crossEvents} cross-section events available</Typography>
-                  )}
+                  {crossEvents > 0 && <Typography variant="caption" color="info.main" sx={{ mt: 1.5 }}>+ {crossEvents} cross-section events available</Typography>}
                 </ChartCard>
               </Grid>
             );
@@ -497,95 +388,51 @@ const Home = () => {
                 <Table size="small" stickyHeader>
                   <TableHead>
                     <TableRow>
-                      <TableCell sx={{ fontWeight: 600, bgcolor: '#fafafa' }}>Event</TableCell>
-                      <TableCell sx={{ fontWeight: 600, bgcolor: '#fafafa' }}>Section</TableCell>
-                      <TableCell sx={{ fontWeight: 600, bgcolor: '#fafafa' }}>Type</TableCell>
-                      <TableCell sx={{ fontWeight: 600, bgcolor: '#fafafa' }}>Stage</TableCell>
-                      <TableCell sx={{ fontWeight: 600, bgcolor: '#fafafa' }}>Category</TableCell>
-                      <TableCell align="center" sx={{ fontWeight: 600, bgcolor: '#fafafa' }}>Home</TableCell>
-                      <TableCell align="center" sx={{ fontWeight: 600, bgcolor: '#fafafa' }}>Cross</TableCell>
-                      <TableCell align="center" sx={{ fontWeight: 600, bgcolor: '#fafafa' }}>Total</TableCell>
+                      {['Event','Section','Type','Stage','Category'].map(h => <TableCell key={h} sx={{ fontWeight: 600, bgcolor: '#fafafa' }}>{h}</TableCell>)}
+                      {['Home','Cross','Total'].map(h => <TableCell key={h} align="center" sx={{ fontWeight: 600, bgcolor: '#fafafa' }}>{h}</TableCell>)}
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {eventWiseStats.map((ev, i) => (
+                    {computed.eventWise.map((ev, i) => (
                       <TableRow key={i} sx={{ '&:hover': { bgcolor: 'rgba(0,0,0,0.02)' } }}>
                         <TableCell sx={{ fontWeight: 500 }}>{ev.name}</TableCell>
                         <TableCell>
-                          <Chip size="small" label={ev.section} sx={{
-                            bgcolor: ev.section && SECTION_COLORS[ev.section] ? `${SECTION_COLORS[ev.section]}15` : undefined,
-                            color: ev.section && SECTION_COLORS[ev.section] ? SECTION_COLORS[ev.section] : undefined,
-                            fontWeight: 600, fontSize: '0.7rem'
-                          }} />
+                          <Chip size="small" label={ev.section} sx={{ bgcolor: SECTION_COLORS[ev.section] ? `${SECTION_COLORS[ev.section]}15` : undefined, color: SECTION_COLORS[ev.section] || undefined, fontWeight: 600, fontSize: '0.7rem' }} />
                         </TableCell>
-                        <TableCell>
-                          <Chip size="small" label={ev.type === 'single' ? 'Individual' : 'Group'}
-                            color={ev.type === 'single' ? 'primary' : 'secondary'} />
-                        </TableCell>
-                        <TableCell>
-                          {ev.stage ? (
-                            <Chip size="small"
-                              icon={ev.stage === 'Off Stage' ? <FileText size={12} /> : <Mic size={12} />}
-                              label={ev.stage}
-                              sx={{
-                                bgcolor: ev.stage === 'Off Stage' ? 'rgba(99,102,241,0.1)' : 'rgba(37,99,235,0.1)',
-                                color: ev.stage === 'Off Stage' ? '#6366F1' : '#2563EB',
-                                fontWeight: 600, fontSize: '0.7rem',
-                                '& .MuiChip-icon': { color: 'inherit' }
-                              }}
-                            />
-                          ) : <Typography variant="caption" color="textSecondary">–</Typography>}
-                        </TableCell>
-                        <TableCell>
-                          <Typography variant="body2" sx={{ fontSize: '0.8rem' }}>{ev.category || '–'}</Typography>
-                        </TableCell>
+                        <TableCell><Chip size="small" label={ev.type === 'single' ? 'Individual' : 'Group'} color={ev.type === 'single' ? 'primary' : 'secondary'} /></TableCell>
+                        <TableCell><StageChip stage={ev.stage} /></TableCell>
+                        <TableCell><Typography variant="body2" sx={{ fontSize: '0.8rem' }}>{ev.category || '–'}</Typography></TableCell>
                         <TableCell align="center">{ev.count}</TableCell>
                         <TableCell align="center">{ev.crossCount > 0 ? ev.crossCount : '–'}</TableCell>
                         <TableCell align="center" sx={{ fontWeight: 600 }}>{ev.count + ev.crossCount}</TableCell>
                       </TableRow>
                     ))}
-                    {eventWiseStats.length === 0 && (
-                      <TableRow><TableCell colSpan={8} align="center" sx={{ py: 3, color: 'text.secondary' }}>No registrations yet</TableCell></TableRow>
-                    )}
+                    {computed.eventWise.length === 0 && <TableRow><TableCell colSpan={8} align="center" sx={{ py: 3, color: 'text.secondary' }}>No registrations yet</TableCell></TableRow>}
                   </TableBody>
                 </Table>
               </TableContainer>
             </ChartCard>
           </Grid>
 
-          {/* Category-wise Breakdown */}
+          {/* Category-wise */}
           <Grid item xs={12} md={6}>
             <ChartCard>
-              <SectionTitle variant="h6">Category-wise Summary</SectionTitle>
+              <SectionTitle variant="h6">On Stage / Off Stage Summary</SectionTitle>
               <TableContainer sx={{ borderRadius: 2, border: '1px solid rgba(0,0,0,0.08)' }}>
                 <Table size="small">
                   <TableHead>
                     <TableRow sx={{ bgcolor: 'rgba(0,0,0,0.02)' }}>
-                      <TableCell sx={{ fontWeight: 600 }}>Category</TableCell>
                       <TableCell sx={{ fontWeight: 600 }}>Stage</TableCell>
-                      <TableCell align="center" sx={{ fontWeight: 600 }}>Events</TableCell>
-                      <TableCell align="center" sx={{ fontWeight: 600 }}>Individual</TableCell>
-                      <TableCell align="center" sx={{ fontWeight: 600 }}>Group</TableCell>
-                      <TableCell align="center" sx={{ fontWeight: 600 }}>Participants</TableCell>
+                      <TableCell sx={{ fontWeight: 600 }}>Section</TableCell>
+                      {['Events','Individual','Group','Participants'].map(h => <TableCell key={h} align="center" sx={{ fontWeight: 600 }}>{h}</TableCell>)}
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {categoryWiseStats.map((row, i) => (
+                    {computed.stageWise.map((row, i) => (
                       <TableRow key={i} sx={{ '&:hover': { bgcolor: 'rgba(0,0,0,0.02)' } }}>
-                        <TableCell sx={{ fontWeight: 500 }}>{row.category}</TableCell>
+                        <TableCell><StageChip stage={row.stage} /></TableCell>
                         <TableCell>
-                          {row.stage ? (
-                            <Chip size="small"
-                              icon={row.stage === 'Off Stage' ? <FileText size={12} /> : <Mic size={12} />}
-                              label={row.stage}
-                              sx={{
-                                bgcolor: row.stage === 'Off Stage' ? 'rgba(99,102,241,0.1)' : 'rgba(37,99,235,0.1)',
-                                color: row.stage === 'Off Stage' ? '#6366F1' : '#2563EB',
-                                fontWeight: 600, fontSize: '0.7rem',
-                                '& .MuiChip-icon': { color: 'inherit' }
-                              }}
-                            />
-                          ) : '–'}
+                          <Chip size="small" label={row.section} sx={{ bgcolor: SECTION_COLORS[row.section] ? `${SECTION_COLORS[row.section]}15` : undefined, color: SECTION_COLORS[row.section] || undefined, fontWeight: 600, fontSize: '0.7rem' }} />
                         </TableCell>
                         <TableCell align="center">{row.eventCount}</TableCell>
                         <TableCell align="center">{row.singles}</TableCell>
@@ -593,16 +440,14 @@ const Home = () => {
                         <TableCell align="center" sx={{ fontWeight: 600 }}>{row.participantCount}</TableCell>
                       </TableRow>
                     ))}
-                    {categoryWiseStats.length === 0 && (
-                      <TableRow><TableCell colSpan={6} align="center" sx={{ py: 3, color: 'text.secondary' }}>No data</TableCell></TableRow>
-                    )}
+                    {computed.stageWise.length === 0 && <TableRow><TableCell colSpan={6} align="center" sx={{ py: 3, color: 'text.secondary' }}>No data</TableCell></TableRow>}
                   </TableBody>
                 </Table>
               </TableContainer>
             </ChartCard>
           </Grid>
 
-          {/* Parish-wise Breakdown */}
+          {/* Parish-wise */}
           <Grid item xs={12} md={6}>
             <ChartCard>
               <SectionTitle variant="h6">Parish-wise Registrations</SectionTitle>
@@ -611,27 +456,20 @@ const Home = () => {
                   <TableHead>
                     <TableRow>
                       <TableCell sx={{ fontWeight: 600, bgcolor: '#fafafa' }}>Parish</TableCell>
-                      <TableCell align="center" sx={{ fontWeight: 600, bgcolor: '#fafafa' }}>Boys</TableCell>
-                      <TableCell align="center" sx={{ fontWeight: 600, bgcolor: '#fafafa' }}>Girls</TableCell>
-                      <TableCell align="center" sx={{ fontWeight: 600, bgcolor: '#fafafa' }}>Participants</TableCell>
-                      <TableCell align="center" sx={{ fontWeight: 600, bgcolor: '#fafafa' }}>Registrations</TableCell>
+                      {['Boys','Girls','Participants','Registrations'].map(h => <TableCell key={h} align="center" sx={{ fontWeight: 600, bgcolor: '#fafafa' }}>{h}</TableCell>)}
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {parishWiseStats.map((row, i) => (
+                    {computed.parishWise.map((row, i) => (
                       <TableRow key={i} sx={{ '&:hover': { bgcolor: 'rgba(0,0,0,0.02)' } }}>
                         <TableCell sx={{ fontWeight: 500 }}>{row.name}</TableCell>
                         <TableCell align="center">{row.males}</TableCell>
                         <TableCell align="center">{row.females}</TableCell>
                         <TableCell align="center" sx={{ fontWeight: 600 }}>{row.count}</TableCell>
-                        <TableCell align="center">
-                          <Chip size="small" label={row.totalRegs} color="primary" variant="outlined" />
-                        </TableCell>
+                        <TableCell align="center"><Chip size="small" label={row.totalRegs} color="primary" variant="outlined" /></TableCell>
                       </TableRow>
                     ))}
-                    {parishWiseStats.length === 0 && (
-                      <TableRow><TableCell colSpan={5} align="center" sx={{ py: 3, color: 'text.secondary' }}>No data</TableCell></TableRow>
-                    )}
+                    {computed.parishWise.length === 0 && <TableRow><TableCell colSpan={5} align="center" sx={{ py: 3, color: 'text.secondary' }}>No data</TableCell></TableRow>}
                   </TableBody>
                 </Table>
               </TableContainer>
