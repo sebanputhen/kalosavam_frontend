@@ -443,8 +443,8 @@ const ParticipantList = () => {
                     <Grid item xs={6} md={1.5}>
                       <FormControl fullWidth size="small"><InputLabel>Stage</InputLabel>
                         <Select value={selectedStage} label="Stage"
-                          onChange={(e) => { setSelectedStage(e.target.value); setSelectedEvent(''); }}>
-                          <MenuItem value="">All</MenuItem>
+                          onChange={(e) => { setSelectedStage(e.target.value); setSelectedEvent('Off Stage'); }}>
+                          {!isParishMode && ( <MenuItem value="">All</MenuItem>)}
                           <MenuItem value="On Stage">On Stage</MenuItem>
                           <MenuItem value="Off Stage">Off Stage</MenuItem>
                         </Select>
