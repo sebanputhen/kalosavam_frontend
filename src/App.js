@@ -129,10 +129,11 @@ function App() {
               <ParishLayout>
                 <Switch>
                   { <Route exact path="/parish/registration" component={TransactionPage} />
-                  <Route exact path="/parish/managers" component={FamilyNew} /> }
-                  // In the parish routes Switch, add before the wildcard:
-<Route exact path="/parish/participantList" component={ParticipantList} />
-                  <Route exact path="/parish/print" component={ChurchReportPage} />
+                  <Route exact path="/parish/managers" component={FamilyNew} /> 
+                  <Route exact path="/parish/participantList" component={ParticipantList} />
+                
+
+                  <Route exact path="/parish/print" component={ChurchReportPage} />}
                   <Route path="*">
                     <Redirect to="/parish/registration" />
                   </Route>
