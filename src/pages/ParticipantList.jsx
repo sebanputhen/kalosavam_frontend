@@ -571,6 +571,12 @@ const ParticipantList = () => {
                                     return (
                                       <TableRow key={globalIdx} sx={{ '&:hover': { bgcolor: 'rgba(0,0,0,0.02)' } }}>
                                         <TableCell sx={{ fontSize: '0.9rem' }}>{globalIdx + 1}</TableCell>
+                                         {showRegNo && (
+                                          <TableCell sx={{ fontSize: '0.85rem', fontWeight: 500 }}>
+                                            {[...participant.regNums].join(', ')}
+                                          </TableCell>
+                                        )}
+
                                         <TableCell sx={{ fontWeight: 500, fontSize: '0.9rem' }}>
                                           {participant.name}
                                           {participant.isCrossSectionParticipation && (
@@ -578,20 +584,7 @@ const ParticipantList = () => {
                                               sx={{ ml: 1, fontSize: '0.7rem', height: 20, bgcolor: '#F59E0B15', color: '#D97706', border: '1px solid #F59E0B30', fontWeight: 600 }} />
                                           )}
                                         </TableCell>
-                                        {showParishCol && (
                                           <TableCell>
-                                            <Chip size="small" label={participant.parish} sx={{
-                                              bgcolor: '#2563EB15', color: '#2563EB', border: '1px solid #2563EB30',
-                                              fontWeight: 600, fontSize: '0.8rem', height: 26
-                                            }} />
-                                          </TableCell>
-                                        )}
-                                        <TableCell sx={{ fontSize: '0.9rem' }}>{participant.standard}</TableCell>
-                                        <TableCell sx={{ fontSize: '0.9rem' }}>{participant.gender === 'M' ? 'Boy' : 'Girl'}</TableCell>
-                                        <TableCell sx={{ fontSize: '0.85rem' }}>
-                                          {new Date(participant.dob).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })}
-                                        </TableCell>
-                                        <TableCell>
                                           <Chip size="small" label={participant.section} sx={{
                                             bgcolor: `${sColor}15`, color: sColor, border: `1px solid ${sColor}30`,
                                             fontWeight: 600, fontSize: '0.8rem', height: 26
@@ -608,11 +601,21 @@ const ParticipantList = () => {
                                             ))}
                                           </Box>
                                         </TableCell>
-                                        {showRegNo && (
-                                          <TableCell sx={{ fontSize: '0.85rem', fontWeight: 500 }}>
-                                            {[...participant.regNums].join(', ')}
+                                        {showParishCol && (
+                                          <TableCell>
+                                            <Chip size="small" label={participant.parish} sx={{
+                                              bgcolor: '#2563EB15', color: '#2563EB', border: '1px solid #2563EB30',
+                                              fontWeight: 600, fontSize: '0.8rem', height: 26
+                                            }} />
                                           </TableCell>
                                         )}
+                                        <TableCell sx={{ fontSize: '0.9rem' }}>{participant.standard}</TableCell>
+                                        <TableCell sx={{ fontSize: '0.9rem' }}>{participant.gender === 'M' ? 'Boy' : 'Girl'}</TableCell>
+                                        <TableCell sx={{ fontSize: '0.85rem' }}>
+                                          {new Date(participant.dob).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                                        </TableCell>
+                                      
+                                       
                                       </TableRow>
                                     );
                                   }) : (
