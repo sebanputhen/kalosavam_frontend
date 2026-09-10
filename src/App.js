@@ -115,11 +115,10 @@ function App() {
 
             {/* Auth routes */}
             <Route exact path="/centerflogin">
-              {isAuthenticated() ? <Redirect to="/home" /> : 
-               isParishUser() ? <Redirect to="/parish/registration" /> : <ParishLoginPage />}
+              {isAuthenticated() ? <Redirect to="/home" /> :  <LoginPage />}
             </Route>
             <Route exact path="/parishlogin">
-              {isParishUser() ? <Redirect to="/parish/registration" /> : <ParishLoginPage />}
+              {isParishUser() ? <Redirect to="/parish/participantList" /> : <ParishLoginPage />}
             </Route>
             <Route exact path="/sign-up" component={SignUp} />
             <Route exact path="/sign-in" component={SignIn} />
