@@ -128,8 +128,8 @@ function App() {
             {isParishUser() && (
               <ParishLayout>
                 <Switch>
-                  <Route exact path="/parish/registration" component={TransactionPage} />
-                  <Route exact path="/parish/managers" component={FamilyNew} /> 
+                  {/* <Route exact path="/parish/registration" component={TransactionPage} />
+                  <Route exact path="/parish/managers" component={FamilyNew} />  */}
                  
 <Route exact path="/parish/participantList" component={ParticipantList} />
                   <Route exact path="/parish/print" component={ChurchReportPage} />
