@@ -116,7 +116,7 @@ function App() {
             {/* Auth routes */}
             <Route exact path="/centerflogin">
               {isAuthenticated() ? <Redirect to="/home" /> : 
-               isParishUser() ? <Redirect to="/parish/registration" /> : <LoginPage />}
+               isParishUser() ? <Redirect to="/parish/registration" /> : <ParishLoginPage />}
             </Route>
             <Route exact path="/parishlogin">
               {isParishUser() ? <Redirect to="/parish/registration" /> : <ParishLoginPage />}
@@ -128,8 +128,8 @@ function App() {
             {isParishUser() && (
               <ParishLayout>
                 <Switch>
-                  {/* <Route exact path="/parish/registration" component={TransactionPage} />
-                  <Route exact path="/parish/managers" component={FamilyNew} /> */}
+                  { <Route exact path="/parish/registration" component={TransactionPage} />
+                  <Route exact path="/parish/managers" component={FamilyNew} /> }
                   // In the parish routes Switch, add before the wildcard:
 <Route exact path="/parish/participantList" component={ParticipantList} />
                   <Route exact path="/parish/print" component={ChurchReportPage} />

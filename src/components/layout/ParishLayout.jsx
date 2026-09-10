@@ -13,6 +13,7 @@ const navItems = [
   { path: '/parish/registration', label: 'Event Registration', icon: ClipboardList },
   { path: '/parish/managers', label: 'Team Managers', icon: Users },
   { path: '/parish/print', label: 'Print Form', icon: FileText },
+   { path: '/parish/participantList', label: 'Participant List', icon: FileText },
 ];
 
 const ParishLayout = ({ children }) => {
