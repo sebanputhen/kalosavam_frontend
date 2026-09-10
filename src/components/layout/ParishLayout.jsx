@@ -63,7 +63,7 @@ const ParishLayout = ({ children }) => {
             </NavLink>
           );
         })}
-      </Box>
+      </Box> 
 
       <Divider />
 
