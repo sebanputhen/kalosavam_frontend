@@ -88,12 +88,16 @@ const FORANE_ID = '673799a3cb9b4aa181e53fa2';
 const SECTION_COLORS = { 'Dominic Savio': '#2563EB', 'Alphonsa': '#10B981', 'Saint Thomas': '#6366F1' };
 
 const ParticipantList = () => {
+  // Detect parish mode before state declarations so we can set defaults
+  const loggedParishId = getParishId();
+  const isParishMode = !!loggedParishId;
+
   const [parishes, setParishes] = useState([]);
-  const [selectedParish, setSelectedParish] = useState('');
+  const [selectedParish, setSelectedParish] = useState(isParishMode ? loggedParishId : '');
   const [selectedSection, setSelectedSection] = useState('');
   const [selectedEvent, setSelectedEvent] = useState('');
   const [selectedGender, setSelectedGender] = useState('');
-  const [selectedStage, setSelectedStage] = useState('');
+  const [selectedStage, setSelectedStage] = useState(isParishMode ? 'Off Stage' : '');
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [allRegistrations, setAllRegistrations] = useState([]);
@@ -105,9 +109,6 @@ const ParticipantList = () => {
   const [eventStageMap, setEventStageMap] = useState({});
   const debounceRef = useRef(null);
   const parishMapRef = useRef({});
-
-  const loggedParishId = getParishId();
-  const isParishMode = !!loggedParishId;
 
   const handleSearchChange = useCallback((e) => {
     const val = e.target.value;
@@ -443,8 +444,9 @@ const ParticipantList = () => {
                     <Grid item xs={6} md={1.5}>
                       <FormControl fullWidth size="small"><InputLabel>Stage</InputLabel>
                         <Select value={selectedStage} label="Stage"
-                          onChange={(e) => { setSelectedStage(e.target.value); setSelectedEvent('Off Stage'); }}>
-                          {!isParishMode && ( <MenuItem value="">All</MenuItem>)}
+                          onChange={(e) => { setSelectedStage(e.target.value); setSelectedEvent(''); }}>
+                          {/* In parish mode: no "All" option, only On Stage / Off Stage */}
+                          {!isParishMode && <MenuItem value="">All</MenuItem>}
                           <MenuItem value="On Stage">On Stage</MenuItem>
                           <MenuItem value="Off Stage">Off Stage</MenuItem>
                         </Select>
@@ -550,14 +552,16 @@ const ParticipantList = () => {
                                 <TableHead>
                                   <TableRow sx={{ bgcolor: 'rgba(0,0,0,0.02)' }}>
                                     <TableCell sx={{ fontWeight: 700, width: 40, fontSize: '0.9rem' }}>Sl</TableCell>
+                                     {showRegNo && <TableCell sx={{ fontWeight: 700, fontSize: '0.9rem' }}>Reg No</TableCell>}
                                     <TableCell sx={{ fontWeight: 700, fontSize: '0.9rem' }}>Name</TableCell>
+                                     <TableCell sx={{ fontWeight: 700, fontSize: '0.9rem' }}>Section</TableCell>
+                                    <TableCell sx={{ fontWeight: 700, fontSize: '0.9rem' }}>Events</TableCell>
                                     {showParishCol && <TableCell sx={{ fontWeight: 700, fontSize: '0.9rem' }}>Parish</TableCell>}
                                     <TableCell sx={{ fontWeight: 700, width: 60, fontSize: '0.9rem' }}>Class</TableCell>
                                     <TableCell sx={{ fontWeight: 700, width: 60, fontSize: '0.9rem' }}>Gender</TableCell>
                                     <TableCell sx={{ fontWeight: 700, width: 100, fontSize: '0.9rem' }}>DOB</TableCell>
-                                    <TableCell sx={{ fontWeight: 700, fontSize: '0.9rem' }}>Section</TableCell>
-                                    <TableCell sx={{ fontWeight: 700, fontSize: '0.9rem' }}>Events</TableCell>
-                                    {showRegNo && <TableCell sx={{ fontWeight: 700, fontSize: '0.9rem' }}>Reg No</TableCell>}
+                                   
+                                   
                                   </TableRow>
                                 </TableHead>
                                 <TableBody>
