@@ -224,10 +224,10 @@ const JudgeMarkEntrySheet = () => {
                     {/* Header */}
                     <Box textAlign="center" mb={1}>
                       <Typography sx={{ fontSize: '20px', fontWeight: 'bold', color: '#1a202c' }}>
-                        സൺഡേസ്കൂൾ കലോത്സവം
+                        BIBLE KALOLSAVAM - 2026
                       </Typography>
                       <Typography sx={{ fontSize: '16px', fontWeight: 'bold', color: '#1a202c' }}>
-                        {foraneName} ഫൊറോന 2026
+                        {foraneName} FORANE 
                       </Typography>
                     </Box>
 
@@ -238,10 +238,10 @@ const JudgeMarkEntrySheet = () => {
                       bgcolor: 'rgba(37,99,235,0.04)', border: '1px solid rgba(37,99,235,0.12)',
                     }}>
                       <Typography sx={{ fontSize: '14px' }}>
-                        <strong>മത്സരയിനം:</strong> {selectedEventData?.eventName || ''}
+                        <strong>Item:</strong> {selectedEventData?.eventName || ''}
                       </Typography>
                       <Typography sx={{ fontSize: '14px' }}>
-                        <strong>വിഭാഗം:</strong> {selectedEventData?.section || ''}
+                        <strong>Section:</strong> {selectedEventData?.section || ''}
                       </Typography>
                     </Box>
 
@@ -276,20 +276,23 @@ const JudgeMarkEntrySheet = () => {
                       </tbody>
                     </table>
 
-                    {/* Result & Grade */}
+                                      {/* Result & Grade */}
                     <Box display="flex" gap={4} mb={2}>
                       <Box>
-                        <table style={{ borderCollapse: 'collapse' }}>
+                        <table style={{ borderCollapse: 'collapse' , width: '100%'}}>
                           <thead>
                             <tr>
-                              <th colSpan={2} style={{ ...headerCellStyle, fontSize: '15px' }}>Result & Grade</th>
+                              <th style={{ ...headerCellStyle, fontSize: '15px', width: '40px' }}>Position</th>
+                              <th style={{ ...headerCellStyle, fontSize: '15px', width: '430px' }}>Result</th>
+                              <th style={{ ...headerCellStyle, fontSize: '15px', width: '200px' }}>Grade</th>
                             </tr>
                           </thead>
                           <tbody>
                             {['1st', '2nd', '3rd'].map(pos => (
                               <tr key={pos}>
-                                <td style={{ ...cellStyle, width: '40px', fontWeight: 'bold' }}>{pos}</td>
-                                <td style={{ ...cellStyle, width: '550px', height: '26px' }}></td>
+                                <td style={{ ...cellStyle, fontWeight: 'bold' }}>{pos}</td>
+                                <td style={{ ...cellStyle, height: '26px' }}></td>
+                                <td style={{ ...cellStyle, height: '26px' }}></td>
                               </tr>
                             ))}
                           </tbody>
@@ -301,8 +304,8 @@ const JudgeMarkEntrySheet = () => {
                     <table style={{ borderCollapse: 'collapse', width: '100%', marginBottom: '16px' }}>
                       <thead>
                         <tr>
-                          <th style={{ ...headerCellStyle, width: '80px' }}>ക്രമനമ്പർ</th>
-                          <th style={headerCellStyle}>ജഡ്ജിന്റെ പേരും ഒപ്പും</th>
+                          <th style={{ ...headerCellStyle, width: '80px' }}>Sl No</th>
+                          <th style={headerCellStyle}>Name & Signature (Judges)</th>
                         </tr>
                       </thead>
                       <tbody>
