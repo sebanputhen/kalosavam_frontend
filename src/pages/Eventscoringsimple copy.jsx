@@ -154,9 +154,8 @@ const EventScoringSimple = () => {
       updated[idx] = { ...updated[idx], totalMarks: val };
 
       const pct = maxMarks > 0 ? (val / maxMarks) * 100 : 0;
-      const grade = pct >= 80 ? 'A' : pct >= 60 ? 'B' : pct >= 50 ? 'C' : '';
-      const isGrp = updated[idx].participantType === 'Group';
-      const gradePoints = grade === 'A' ? (isGrp ? 10 : 5) : grade === 'B' ? (isGrp ? 5 : 3) : grade === 'C' ? (isGrp ? 3 : 1) : 0;
+      const grade = pct >= 80 ? 'A' : pct >= 60 ? 'B' : pct >= 40 ? 'C' : '';
+      const gradePoints = grade === 'A' ? 5 : grade === 'B' ? 3 : grade === 'C' ? 1 : 0;
       updated[idx].grade = grade;
       updated[idx].gradePoints = gradePoints;
 
@@ -169,8 +168,8 @@ const EventScoringSimple = () => {
         if (pi < 0) continue;
         const pos = String(i + 1);
         updated[pi].position = pos;
-        const isGrpPos = updated[pi].participantType === 'Group';
-        updated[pi].positionPoints = pos === '1' ? (isGrpPos ? 10 : 5) : pos === '2' ? (isGrpPos ? 5 : 3) : pos === '3' ? (isGrpPos ? 3 : 1) : 0;
+        const isGrp = updated[pi].participantType === 'Group';
+        updated[pi].positionPoints = pos === '1' ? (isGrp ? 10 : 5) : pos === '2' ? (isGrp ? 5 : 3) : pos === '3' ? (isGrp ? 3 : 1) : 0;
       }
       for (let i = 0; i < updated.length; i++) updated[i].totalPoints = (updated[i].gradePoints || 0) + (updated[i].positionPoints || 0);
       return updated;
@@ -353,7 +352,7 @@ const EventScoringSimple = () => {
 
                   {/* Grading ref */}
                   <Box sx={{ p: 1.5, mb: 2, borderRadius: 2, bgcolor: 'rgba(99,102,241,0.04)', border: '1px solid rgba(99,102,241,0.1)', display: 'flex', gap: 3, flexWrap: 'wrap' }}>
-                    <Typography variant="caption" color="text.secondary"><strong>Grade {isGroup ? '(Group)' : '(Ind)'}:</strong> A ≥80% ({isGroup ? 10 : 5}pt) · B ≥60% ({isGroup ? 5 : 3}pt) · C ≥50% ({isGroup ? 3 : 1}pt)</Typography>
+                    <Typography variant="caption" color="text.secondary"><strong>Grade:</strong> A ≥80% (5pt) · B ≥60% (3pt) · C ≥40% (1pt)</Typography>
                     <Typography variant="caption" color="text.secondary"><strong>Position {isGroup ? '(Group)' : '(Ind)'}:</strong> 1st: {isGroup ? 10 : 5}pt · 2nd: {isGroup ? 5 : 3}pt · 3rd: {isGroup ? 3 : 1}pt</Typography>
                   </Box>
 

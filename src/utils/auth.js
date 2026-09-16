@@ -77,3 +77,11 @@ export const decodeToken = (token) => {
       window.removeEventListener('focus', () => {});
     };
   };
+  export const getUserRole = () => {
+  try {
+    const user = JSON.parse(localStorage.getItem('user'));
+    return user?.role || '';
+  } catch { return ''; }
+};
+
+export const isSuperAdmin = () => getUserRole() === 'superadmin';

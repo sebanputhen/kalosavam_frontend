@@ -15,7 +15,6 @@ import {
 } from '@mui/material';
 import { Menu } from 'lucide-react';
 import { styled } from '@mui/material/styles';
-import { isSuperAdmin } from '../../utils/auth';
 
 const drawerWidth = 280;
 
@@ -84,7 +83,7 @@ const IconWrapper = styled(Box)({
   height: '24px',
   marginRight: '12px',
   fontSize: '18px',
-  color: 'rgb(107, 114, 128)',
+  color: 'rgb(107, 114, 128)', // Neutral icon color
 });
 
 const menuItems = [
@@ -98,23 +97,100 @@ const menuItems = [
     type: 'header',
     label: 'MANAGE/CREATE',
     fold: true,
-    superAdminOnly: true,
     items: [
-      { type: 'single', path: '/forane', label: 'Manage Forane', icon: '🏢' },
-      { type: 'single', path: '/Parish', label: 'Manage Parish', icon: '⛪' },
-      { type: 'single', path: '/PersonManagement', label: 'Manage Category', icon: '🏷️' },
-      { type: 'single', path: '/Family', label: 'Manage Event', icon: '🎉' },
-      { type: 'single', path: '/FinanceSettings', label: 'Manage Venue', icon: '🏟️' },
+      {
+        type: 'single',
+        path: '/forane',
+        label: 'Manage Forane',
+        icon: '🏢',
+      },
+      {
+        type: 'single',
+        path: '/Parish',
+        label: 'Manage Parish',
+        icon: '⛪',
+      },
+      {
+        type: 'single',
+        path: '/PersonManagement',
+        label: 'Manage Category',
+        icon: '🏷️',
+      },
+      {
+        type: 'single',
+        path: '/Family',
+        label: 'Manage Event',
+        icon: '🎉',
+      }, 
+      {
+        type: 'single',
+        path: '/FinanceSettings',
+        label: 'Manage Venue',
+        icon: '🏟️',
+      }
     ]
   },
+  ,
+  // {
+  //   type: 'header',
+  //   label: 'STUDENTS PROFILE',
+  //   fold: true,
+  //   items: [
+  //     {
+  //       type: 'single',
+  //       path: '/Student',
+  //       label: 'Manage Students',
+  //       icon: '🏢',
+  //     },
+  //     {
+  //       type: 'single',
+  //       path: '/Parish',
+  //       label: 'Manage Parish',
+  //       icon: '⛪',
+  //     },
+  //     {
+  //       type: 'single',
+  //       path: '/PersonManagement',
+  //       label: 'Manage Category',
+  //       icon: '🏷️',
+  //     },
+  //     {
+  //       type: 'single',
+  //       path: '/Family',
+  //       label: 'Manage Event',
+  //       icon: '🎉',
+  //     }, 
+  //     {
+  //       type: 'single',
+  //       path: '/FinanceSettings',
+  //       label: 'Manage Venue',
+  //       icon: '🏟️',
+  //     }
+  //   ]
+  // },
   {
     type: 'header',
     label: 'REGISTRATION',
     fold: true,
     items: [
-      { type: 'single', path: '/FamilyFinance', label: 'Manage Managers', icon: '👥', superAdminOnly: true },
-      { type: 'single', path: '/transactions', label: 'Registration', icon: '📝', superAdminOnly: true },
-      { type: 'single', path: '/report', label: 'Registration Print', icon: '🖨️' },
+      {
+        type: 'single',
+        path: '/FamilyFinance',
+        label: 'Manage Managers',
+        icon: '👥',
+      },
+      {
+        type: 'single',
+        path: '/transactions',
+        label: 'Registration',
+        icon: '📝',
+      },
+      {
+        type: 'single',
+        path: '/report',
+        label: 'Registration Print',
+        icon: '🖨️',
+      }
     ]
   },
   {
@@ -122,15 +198,54 @@ const menuItems = [
     label: 'OFFICE',
     fold: true,
     items: [
-      { type: 'single', path: '/eventscoring', label: 'Score Entry', icon: '🏆' },
-      { type: 'single', path: '/Project', label: 'Score Entry', icon: '🏆' , superAdminOnly: true},
-      { type: 'single', path: '/community', label: 'Stage Allocation', icon: '🎭', superAdminOnly: true },
-      { type: 'single', path: '/yearendtransfer', label: 'Judge Total Sheet', icon: '📊', superAdminOnly: true },
-      { type: 'single', path: '/family-print', label: 'Judge Sheet', icon: '📑', superAdminOnly: true },
-      { type: 'single', path: '/addopening', label: 'Venue Based List', icon: '📍', superAdminOnly: true },
-      { type: 'single', path: '/participantList', label: 'Participant List', icon: '📋' },
-      { type: 'single', path: '/registration-numbers', label: 'Registration Numbers', icon: '🔢',superAdminOnly: true },
-      { type: 'single', path: '/resultsDashboard', label: 'Results Dashboard', icon: '📊' },
+      {
+        type: 'single',
+        path: '/eventscoring',
+        label: 'Score Entry',
+        icon: '🏆',
+      },
+      {
+        type: 'single',
+        path: '/community',
+        label: 'Stage Allocation',
+        icon: '🎭',
+      },
+      {
+        type: 'single',
+        path: '/yearendtransfer',
+        label: 'Judge Total Sheet',
+        icon: '📊',
+      },
+      {
+        type: 'single',
+        path: '/family-print',
+        label: 'Judge Sheet',
+        icon: '📑',
+      },
+      {
+        type: 'single',
+        path: '/addopening',
+        label: 'Venue Based  List',
+        icon: '📍',
+      } 
+      ,{
+        type: 'single',
+        path: '/participantList',
+        label: 'Participant List',
+        icon: '📋',
+      },
+      {
+        type: 'single',
+        path: '/registration-numbers',
+        label: 'Registration Numbers',
+        icon: '🔢',
+      },
+      {
+        type: 'single',
+        path: '/resultsDashboard',
+        label: 'Results Dashboard',
+        icon: '📊',
+      }
     ]
   }
 ];
@@ -145,7 +260,6 @@ const Sidenav = ({ color }) => {
     'JUDGE': true
   });
   const { pathname } = useLocation();
-  const superAdmin = isSuperAdmin();
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
@@ -157,19 +271,6 @@ const Sidenav = ({ color }) => {
       [label]: !prev[label]
     }));
   };
-
-  // Filter menu items based on role
-  const filteredMenuItems = menuItems
-    .filter(item => !item.superAdminOnly || superAdmin)
-    .map(item => {
-      if (item.type === 'header' && item.items) {
-        const filteredItems = item.items.filter(sub => !sub.superAdminOnly || superAdmin);
-        if (filteredItems.length === 0) return null;
-        return { ...item, items: filteredItems };
-      }
-      return item;
-    })
-    .filter(Boolean);
 
   const drawer = (
     <>
@@ -183,10 +284,11 @@ const Sidenav = ({ color }) => {
             color: 'rgb(17, 24, 39)',
           }}
         >
+        
         </Typography>
       </LogoWrapper>
       <Box sx={{ px: 2 }}>
-        {filteredMenuItems.map((item, index) => (
+        {menuItems.map((item, index) => (
           item.type === 'header' ? (
             <React.Fragment key={`header-${index}`}>
               <StyledListSubheader 
@@ -260,6 +362,7 @@ const Sidenav = ({ color }) => {
         fontSize: '13px',
         color: 'rgb(156, 163, 175)'
       }}>
+        
       </Box>
     </>
   );

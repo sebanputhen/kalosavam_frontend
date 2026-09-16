@@ -3,7 +3,7 @@ import React, { useState, useEffect } from "react";
 import { Switch, Route, Redirect } from "react-router-dom";
 import { SpeedInsights } from '@vercel/speed-insights/react';
 import { FinancialYearProvider } from './pages/FinancialYearContext';
-import { isAuthenticated,isSuperAdmin  } from './utils/auth';
+import { isAuthenticated } from './utils/auth';
 import { isParishUser } from './utils/parishAuth';
 import Main from "./components/layout/Main";
 import ParishLayout from "./components/layout/ParishLayout";
@@ -142,51 +142,44 @@ function App() {
             {/* ====== ADMIN USER ROUTES ====== */}
             {isAuthenticated() ? (
               <Main>
-  <Switch>
-    <Route exact path="/home" component={Home} />
-    <Route exact path="/dashboard" component={Home} />
-    <Route exact path="/profile" component={Profile} />
-    <Route exact path="/participantList" component={ParticipantList} />
-    {/* <Route exact path="/registration-numbers" component={RegistrationNumberAssignment} /> */}
-    <Route exact path="/eventscoring" component={EventScoring} />
-    <Route exact path="/report" component={ChurchReportPage} />
-    <Route exact path="/resultsDashboard" component={ResultsDashboard} />
-
-    {/* Super admin only routes */}
-    {isSuperAdmin() && (
-      <>
-        <Route exact path="/forane" component={Forane} />
-        <Route exact path="/parish" component={Parish} />
-        <Route exact path="/koottayma" component={Koottayma} />
-        <Route exact path="/Family" component={Family} />
-        <Route exact path="/Student" component={Student} />
-        <Route exact path="/PersonManagement" component={PersonManagement} />
-        <Route exact path="/FamilyFinanace" component={FamilyFinanace} />
-        <Route exact path="/FamilyFinance" component={FamilyNew} />
-        <Route exact path="/FamilyFinance1" component={FamilyNew1} />
-        <Route exact path="/transactions/new" component={TransactionListPage} />
-        <Route exact path="/transactions" component={TransactionPage} />
-        <Route exact path="/Titheprint" component={Titheprint} />
-        <Route exact path="/FinanceSettings" component={FinanceSettings} />
-        <Route exact path="/communitysettings" component={CommunitySettings} />
-        <Route exact path="/otherprojectsettings" component={OtherProjectSettings} />
-        <Route exact path="/parishallocsettings" component={ParishAllocSettings} />
-        <Route exact path="/parishallocsettings1" component={ParishAllocSettings1} />
-        <Route exact path="/parish-credentials" component={ParishCredentials} />
-        <Route exact path="/movefamily" component={MoveFamily} />
-        <Route exact path="/community" component={Community} />
-        <Route exact path="/project" component={Project} />
-        <Route exact path="/family-print" component={BulkFamilyPrintPage} />
-        <Route exact path="/print-family/:id" component={BulkFamilyPrintPage} />
-        <Route exact path="/addopening" component={OpeningBalance} />
-        <Route exact path="/yearendtransfer" component={YearEndTransfer} />
-      </>
-    )}
-
-    <Route exact path="/logout" component={logout} />
-    <Route path="*"><Redirect to="/home" /></Route>
-  </Switch>
-</Main>
+                <Switch>
+                  <Route exact path="/home" component={Home} />
+                  <Route exact path="/dashboard" component={Home} />
+                  <Route exact path="/profile" component={Profile} />
+                  <Route exact path="/forane" component={Forane} />
+                  <Route exact path="/parish" component={Parish} />
+                  <Route exact path="/koottayma" component={Koottayma} />
+                  <Route exact path="/Family" component={Family} />
+                  <Route exact path="/Student" component={Student} />
+                  <Route exact path="/PersonManagement" component={PersonManagement} />
+                  <Route exact path="/FamilyFinanace" component={FamilyFinanace} />
+                  <Route exact path="/FamilyFinance" component={FamilyNew} />
+                  <Route exact path="/FamilyFinance1" component={FamilyNew1} />
+                  <Route exact path="/transactions/new" component={TransactionListPage} />
+                  <Route exact path="/transactions" component={TransactionPage} />
+                  <Route exact path="/Titheprint" component={Titheprint} />
+                  <Route exact path="/FinanceSettings" component={FinanceSettings} />
+                  <Route exact path="/communitysettings" component={CommunitySettings} />
+                  <Route exact path="/otherprojectsettings" component={OtherProjectSettings} />
+                  <Route exact path="/parishallocsettings" component={ParishAllocSettings} />
+                  <Route exact path="/parishallocsettings1" component={ParishAllocSettings1} />
+                  <Route exact path="/registration-numbers" component={RegistrationNumberAssignment} />
+                  <Route exact path="/participantList" component={ParticipantList} />
+                  <Route exact path="/resultsDashboard" component={ResultsDashboard} />
+                  <Route exact path="/parish-credentials" component={ParishCredentials} />
+                  <Route exact path="/movefamily" component={MoveFamily} />
+                  <Route exact path="/community" component={Community} />
+                  <Route exact path="/project" component={Project} />
+                  <Route exact path="/eventscoring" component={EventScoring} />
+                  <Route exact path="/report" component={ChurchReportPage} />
+                  <Route exact path="/family-print" component={BulkFamilyPrintPage} />
+                  <Route exact path="/print-family/:id" component={BulkFamilyPrintPage} />
+                  <Route exact path="/addopening" component={OpeningBalance} />
+                  <Route exact path="/yearendtransfer" component={YearEndTransfer} />
+                  <Route exact path="/logout" component={logout} />
+                  <Route path="*"><Redirect to="/home" /></Route>
+                </Switch>
+              </Main>
             ) : (
               <Redirect to="/centerflogin" />
             )}

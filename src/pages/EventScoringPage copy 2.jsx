@@ -266,24 +266,12 @@ const EventScoringPage = () => {
     updatedParticipants[participantIndex].totalMarks = markValue;
     const percentage = maxMarks > 0 ? (markValue / maxMarks) * 100 : 0;
     let grade = '';
-    // if (percentage >= 80) grade = 'A';
-    // else if (percentage >= 60) grade = 'B';
-    // else if (percentage >= 40) grade = 'C';
-    // updatedParticipants[participantIndex].grade = grade;
     if (percentage >= 80) grade = 'A';
     else if (percentage >= 60) grade = 'B';
-    else if (percentage >= 50) grade = 'C';
-
+    else if (percentage >= 40) grade = 'C';
     updatedParticipants[participantIndex].grade = grade;
-    // let gradePoints = 0;
-    // switch (grade) { case 'A': gradePoints = 5; break; case 'B': gradePoints = 3; break; case 'C': gradePoints = 1; break; default: gradePoints = 0; }
-    const isGroup = updatedParticipants[participantIndex].participantType === 'Group';
     let gradePoints = 0;
-    if (isGroup) {
-      switch (grade) { case 'A': gradePoints = 10; break; case 'B': gradePoints = 5; break; case 'C': gradePoints = 3; break; default: gradePoints = 0; }
-    } else {
-      switch (grade) { case 'A': gradePoints = 5; break; case 'B': gradePoints = 3; break; case 'C': gradePoints = 1; break; default: gradePoints = 0; }
-    }
+    switch (grade) { case 'A': gradePoints = 5; break; case 'B': gradePoints = 3; break; case 'C': gradePoints = 1; break; default: gradePoints = 0; }
     updatedParticipants[participantIndex].gradePoints = gradePoints;
     const sortedParticipants = [...updatedParticipants].sort((a, b) => b.totalMarks - a.totalMarks);
     updatedParticipants.forEach(p => { p.position = ''; p.positionPoints = 0; });
@@ -541,24 +529,26 @@ const EventScoringPage = () => {
                     <Typography variant="subtitle2" sx={{ mb: 1.5, fontWeight: 600, color: '#1a202c' }}>
                       Grading & Points System (Auto-calculated)
                     </Typography>
-                 <Grid item xs={12} md={4}>
-                    <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5, color: '#4F46E5' }}>
-                      Grade Criteria (% of Max Marks)
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">A: 80%+ · B: 60-79% · C: 50-59%</Typography>
-                  </Grid>
-                  <Grid item xs={12} md={4}>
-                    <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5, color: '#2563EB' }}>
-                      Individual Points
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">Grade — A: 5 · B: 3 · C: 1 | Position — 1st: 5 · 2nd: 3 · 3rd: 1</Typography>
-                  </Grid>
-                  <Grid item xs={12} md={4}>
-                    <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5, color: '#10B981' }}>
-                      Group Points
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">Grade — A: 10 · B: 5 · C: 3 | Position — 1st: 10 · 2nd: 5 · 3rd: 3</Typography>
-                  </Grid>
+                    <Grid container spacing={2}>
+                      <Grid item xs={12} md={4}>
+                        <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5, color: '#4F46E5' }}>
+                          Grade Criteria (% of Max Marks)
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">A: 80%+ (5 pts) · B: 60-79% (3 pts) · C: 40-59% (1 pt)</Typography>
+                      </Grid>
+                      <Grid item xs={12} md={4}>
+                        <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5, color: '#2563EB' }}>
+                          Individual Position Points
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">1st: 5 pts · 2nd: 3 pts · 3rd: 1 pt</Typography>
+                      </Grid>
+                      <Grid item xs={12} md={4}>
+                        <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5, color: '#10B981' }}>
+                          Group Position Points
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">1st: 10 pts · 2nd: 5 pts · 3rd: 3 pts</Typography>
+                      </Grid>
+                    </Grid>
                   </Box>
 
                   {isLoading ? (
