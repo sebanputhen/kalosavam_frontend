@@ -173,6 +173,7 @@ function App() {
         <Route exact path="/parishallocsettings" component={ParishAllocSettings} />
         <Route exact path="/parishallocsettings1" component={ParishAllocSettings1} />
         <Route exact path="/parish-credentials" component={ParishCredentials} />
+         <Route exact path="/registration-numbers" component={RegistrationNumberAssignment} />
         <Route exact path="/movefamily" component={MoveFamily} />
         <Route exact path="/community" component={Community} />
         <Route exact path="/project" component={Project} />
